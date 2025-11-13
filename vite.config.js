@@ -1,14 +1,13 @@
 import { fileURLToPath, URL } from 'node:url'
-
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import vueDevTools from 'vite-plugin-vue-devtools'
+// ✅ NO importar vueDevTools
+// import vueDevTools from 'vite-plugin-vue-devtools' // ❌ Comentar o eliminar
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
-    vueDevTools(),
+    // vueDevTools(),
   ],
   resolve: {
     alias: {
