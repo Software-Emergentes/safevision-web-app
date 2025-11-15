@@ -28,7 +28,7 @@ export function formatDate(isoDate, includeTime = false) {
 }
 
 export function calculateDuration(startTime, endTime = null) {
-  if (!startTime) return '0h 0m'
+  if (!startTime) return '0 min'
 
   const start = new Date(startTime)
   const end = endTime ? new Date(endTime) : new Date()
@@ -37,7 +37,12 @@ export function calculateDuration(startTime, endTime = null) {
   const hours = Math.floor(diffMs / (1000 * 60 * 60))
   const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
 
-  return `${hours}h ${minutes}m`
+  // ✅ Si solo hay minutos, no mostrar "0h"
+  if (hours === 0) {
+    return `${minutes} min`
+  }
+
+  return `${hours}h ${minutes}min`
 }
 
 export function getRelativeTime(isoDate) {
@@ -51,10 +56,10 @@ export function getRelativeTime(isoDate) {
   const hours = Math.floor(diffMs / (1000 * 60 * 60))
   const days = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
-  if (minutes < 1) return 'Hace unos segundos'
-  if (minutes < 60) return `Hace ${minutes} min`
-  if (hours < 24) return `Hace ${hours}h`
-  if (days < 7) return `Hace ${days} días`
+  if (minutes < 1) return 'Última hace unos segundos'
+  if (minutes < 60) return `Última hace ${minutes} min`
+  if (hours < 24) return `Última hace ${hours}h`
+  if (days < 7) return `Última hace ${days} días`
 
   return formatDate(isoDate)
 }
@@ -65,20 +70,18 @@ export function getDriverStatusText(status) {
   return DRIVER_STATUS_LABELS[status] || status
 }
 
-// ✅ NUEVA: Obtener texto de severidad según DB
+// ✅ Obtener texto de severidad según DB
 export function getAlertSeverityText(severity) {
   return ALERT_SEVERITY_LABELS[severity] || severity
 }
 
-// ✅ NUEVA: Obtener texto de estado de alerta según DB
+// ✅ Obtener texto de estado de alerta según DB
 export function getAlertStatusText(status) {
   return ALERT_STATUS_LABELS[status] || status
 }
 
-// ✅ NUEVA: Determinar SEVERITY según DB (Low, Medium, High, Critical)
+// ✅ Determinar SEVERITY según DB (Low, Medium, High, Critical)
 export function determineAlertSeverity(fatigueScore = 0, totalAlerts = 0) {
-  // Según DATABASE: severity_level = Low | Medium | High | Critical
-
   if (fatigueScore >= 80 || totalAlerts > ALERT_COUNT_THRESHOLDS.HIGH) {
     return ALERT_SEVERITY.CRITICAL
   }
@@ -94,21 +97,16 @@ export function determineAlertSeverity(fatigueScore = 0, totalAlerts = 0) {
   return ALERT_SEVERITY.LOW
 }
 
-// ✅ MANTENER: Para compatibilidad con UI (safe, warning, critical)
-export function determineAlertLevel(monitoring = null, totalAlerts = 0) {
-  if (!monitoring) return 'safe'
-
-  const fatigueScore = monitoring.fatigueScore || 0
-
-  if (fatigueScore >= FATIGUE_THRESHOLDS.CRITICAL || totalAlerts > 3) {
-    return 'critical'
+// ✅ Mapear severity a clase CSS
+export function getAlertLevelClass(severity) {
+  const classMap = {
+    'Critical': 'critical',
+    'High': 'high',
+    'Medium': 'medium',
+    'Low': 'low',
+    'Safe': 'safe'
   }
-
-  if (fatigueScore >= FATIGUE_THRESHOLDS.WARNING || totalAlerts > 1) {
-    return 'warning'
-  }
-
-  return 'safe'
+  return classMap[severity] || 'safe'
 }
 
 export function getAlertLevelText(level) {
@@ -120,7 +118,7 @@ export function getAlertLevelText(level) {
   return levelMap[level] || level
 }
 
-// ✅ NUEVA: Formatear síntomas de fatiga
+// ✅ Formatear síntomas de fatiga
 export function formatFatigueSymptoms(symptoms) {
   if (!symptoms || !Array.isArray(symptoms)) return 'Sin síntomas'
 
@@ -163,7 +161,7 @@ export function truncateText(text, maxLength = 50) {
 
 // ==================== COLOR HELPERS ====================
 
-// ✅ NUEVA: Obtener color según severity del DB
+// ✅ Obtener color según severity del DB
 export function getAlertSeverityColor(severity) {
   return SEVERITY_COLORS[severity] || SEVERITY_COLORS[ALERT_SEVERITY.LOW]
 }
@@ -212,13 +210,10 @@ export function transformDriverData(backendDriver) {
 
     alerts: totalAlerts,
 
-    // ✅ NUEVO: Severity según DB
+    // ✅ Severity según DB
     severity: determineAlertSeverity(fatigueScore, totalAlerts),
 
-    // ✅ MANTENER: alertLevel para UI
-    alertLevel: determineAlertLevel(backendDriver.monitoring, totalAlerts),
-
-    // ✅ NUEVO: Síntomas de fatiga
+    // ✅ Síntomas de fatiga
     fatigueSymptoms: backendDriver.fatigueSymptoms || [],
 
     lastAlert: backendDriver.lastAlert
@@ -242,7 +237,7 @@ export default {
   getAlertStatusText,
   getAlertLevelText,
   determineAlertSeverity,
-  determineAlertLevel,
+  getAlertLevelClass,
   formatFatigueSymptoms,
   isValidEmail,
   isValidPhone,
