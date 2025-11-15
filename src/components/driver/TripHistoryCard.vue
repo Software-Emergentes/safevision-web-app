@@ -50,37 +50,22 @@
       </div>
     </div>
 
-    <!-- Footer con acción -->
+    <!-- Footer -->
     <div class="trip-footer">
       <div class="trip-stats">
-        <span class="stat-item">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-          </svg>
-          Duración: {{ calculateDuration(trip.startTime, trip.endTime) }}
-        </span>
+    <span class="stat-item">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      Duración: {{ calculateDuration(trip.startTime, trip.endTime) }}
+    </span>
       </div>
-      <button class="view-btn" @click="handleViewDetails">
-        Ver detalles
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-          <polyline points="12 5 19 12 12 19"></polyline>
-        </svg>
-      </button>
     </div>
   </div>
 </template>
 
 <script setup>
-const props = defineProps({
-  trip: {
-    type: Object,
-    required: true
-  }
-})
-
-const emit = defineEmits(['view-details'])
 
 // ✅ AGREGAR ESTA FUNCIÓN
 const calculateDuration = (startTime, endTime) => {
@@ -120,9 +105,6 @@ const getStatusText = (status) => {
   return ALERT_SEVERITY_LABELS[status] || status
 }
 
-const handleViewDetails = () => {
-  emit('view-details', props.trip)
-}
 </script>
 
 <style scoped>
@@ -250,10 +232,9 @@ const handleViewDetails = () => {
   font-weight: 600;
 }
 
-/* Footer */
 .trip-footer {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start; /* ✅ Cambiado de space-between */
   align-items: center;
   gap: 12px;
 }
@@ -319,7 +300,15 @@ const handleViewDetails = () => {
   }
 }
 
-/* BADGES BASADOS EN SEVERITY DEL DB */
+/* ✅ BADGE AZUL PARA LEVE (NO VERDE) */
+.status-badge.Low,
+.status-badge.low,
+.status-badge.safe {
+  background: #E3F2FD;
+  color: #0066CC;
+  border-left-color: #0066CC;
+}
+
 .status-badge.Critical,
 .status-badge.critical {
   background: #FFE8E8;
@@ -341,13 +330,6 @@ const handleViewDetails = () => {
   border-left-color: #FFCD18;
 }
 
-.status-badge.Low,
-.status-badge.safe {
-  background: #E8F8F0;
-  color: #00CA75;
-  border-left-color: #00CA75;
-}
-
 /* Card borders basados en severity */
 .trip-card.status-Critical,
 .trip-card.status-critical {
@@ -367,9 +349,10 @@ const handleViewDetails = () => {
   background: linear-gradient(to right, #FFFBEB 0%, white 10%);
 }
 
+/* ✅ AZUL PARA LEVE (NO VERDE) */
 .trip-card.status-Low,
 .trip-card.status-safe {
-  border-left-color: #00CA75;
-  background: linear-gradient(to right, #F0FFF4 0%, white 10%);
+  border-left-color: #0066CC;
+  background: linear-gradient(to right, #E3F2FD 0%, white 10%);
 }
 </style>
