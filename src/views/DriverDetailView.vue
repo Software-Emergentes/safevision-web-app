@@ -1,11 +1,14 @@
 <template>
-  <div class="driver-detail-container">
+  <div class="flex min-h-screen bg-gray-100 font-sans">
     <AppSidebar />
 
-    <main class="main-content">
-      <!-- Header -->
-      <header class="page-header">
-        <button @click="goBack" class="back-button">
+    <main class="ml-[280px] flex-1 p-8 w-[calc(100%-280px)]">
+      <!-- Header con botón volver -->
+      <header class="mb-8">
+        <button
+          @click="goBack"
+          class="inline-flex items-center gap-2 py-2.5 px-5 bg-white border border-gray-200 rounded-lg text-gray-900 text-sm font-semibold cursor-pointer transition-all duration-300 mb-6 hover:bg-gray-100 hover:border-primary hover:text-primary"
+        >
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="19" y1="12" x2="5" y2="12"></line>
             <polyline points="12 19 5 12 12 5"></polyline>
@@ -14,42 +17,47 @@
         </button>
 
         <!-- Loading State -->
-        <div v-if="isLoading" class="loading-header">
-          <div class="spinner"></div>
-          <p>Cargando información del conductor...</p>
+        <div v-if="isLoading" class="flex flex-col items-center justify-center py-[60px] gap-4">
+          <div class="w-10 h-10 border-4 border-gray-200 border-t-primary rounded-full animate-spin"></div>
+          <p class="text-gray-500">Cargando información del conductor...</p>
         </div>
 
         <!-- Driver Info -->
-        <div v-else-if="driver" class="driver-header-info">
-          <div class="driver-avatar-large">
-            <img :src="driver.avatar" :alt="driver.name" />
-            <span class="status-badge" :class="driver.status">
+        <div v-else-if="driver" class="bg-white rounded-xl p-8 shadow-sm flex gap-8 items-start">
+          <div class="relative flex-shrink-0">
+            <img :src="driver.avatar" :alt="driver.name" class="w-[120px] h-[120px] rounded-2xl object-cover border-4 border-gray-100" />
+            <span
+              :class="[
+                'absolute -bottom-2 left-1/2 -translate-x-1/2 py-1.5 px-4 rounded-[20px] text-xs font-semibold whitespace-nowrap shadow-sm',
+                driver.status === 'active' ? 'bg-success text-white' : driver.status === 'resting' ? 'bg-warning text-gray-900' : 'bg-gray-500 text-white'
+              ]"
+            >
               {{ getStatusText(driver.status) }}
             </span>
           </div>
 
-          <div class="driver-details-header">
-            <h1 class="driver-name">{{ driver.name }}</h1>
+          <div class="flex-1">
+            <h1 class="text-[32px] font-bold text-gray-900 mb-3">{{ driver.name }}</h1>
 
-            <div class="driver-meta">
-              <span class="meta-item">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <div class="flex gap-6 mb-6 flex-wrap">
+              <span class="flex items-center gap-1.5 text-gray-500 text-sm font-medium">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-primary">
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                   <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                 </svg>
                 {{ driver.vehicle?.plate || 'N/A' }}
               </span>
 
-              <span class="meta-item" v-if="driver.currentTrip">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <span v-if="driver.currentTrip" class="flex items-center gap-1.5 text-gray-500 text-sm font-medium">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-primary">
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                   <circle cx="12" cy="10" r="3"></circle>
                 </svg>
                 {{ driver.currentTrip.route }}
               </span>
 
-              <span class="meta-item">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <span class="flex items-center gap-1.5 text-gray-500 text-sm font-medium">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-primary">
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                   <polyline points="22,6 12,13 2,6"></polyline>
                 </svg>
@@ -58,22 +66,22 @@
             </div>
 
             <!-- Quick Stats -->
-            <div class="quick-stats">
-              <div class="stat-item" :class="getStatClass(driver.severity)">
-                <span class="stat-label">Nivel de Alerta</span>
-                <span class="stat-value">{{ getSeverityLabel(driver.severity) }}</span>
+            <div class="flex gap-4">
+              <div :class="['flex flex-col gap-1 py-3 px-4 bg-gray-100 rounded-lg border-l-[3px]', getStatClass(driver.severity)]">
+                <span class="text-xs text-gray-500 font-medium">Nivel de Alerta</span>
+                <span class="text-lg font-bold text-gray-900">{{ getSeverityLabel(driver.severity) }}</span>
               </div>
-              <div class="stat-item" v-if="driver.currentTrip">
-                <span class="stat-label">Tiempo en Ruta</span>
-                <span class="stat-value">{{ calculateTripDuration(driver.currentTrip.startTime) }}</span>
+              <div v-if="driver.currentTrip" class="flex flex-col gap-1 py-3 px-4 bg-gray-100 rounded-lg border-l-[3px] border-l-gray-200">
+                <span class="text-xs text-gray-500 font-medium">Tiempo en Ruta</span>
+                <span class="text-lg font-bold text-gray-900">{{ calculateTripDuration(driver.currentTrip.startTime) }}</span>
               </div>
-              <div class="stat-item" v-if="driver.monitoring">
-                <span class="stat-label">Fatiga</span>
-                <span class="stat-value">{{ driver.monitoring.fatigueScore }}/100</span>
+              <div v-if="driver.monitoring" class="flex flex-col gap-1 py-3 px-4 bg-gray-100 rounded-lg border-l-[3px] border-l-gray-200">
+                <span class="text-xs text-gray-500 font-medium">Fatiga</span>
+                <span class="text-lg font-bold text-gray-900">{{ driver.monitoring.fatigueScore }}/100</span>
               </div>
-              <div class="stat-item">
-                <span class="stat-label">Total Alertas</span>
-                <span class="stat-value">{{ driver.alerts }}</span>
+              <div class="flex flex-col gap-1 py-3 px-4 bg-gray-100 rounded-lg border-l-[3px] border-l-gray-200">
+                <span class="text-xs text-gray-500 font-medium">Total Alertas</span>
+                <span class="text-lg font-bold text-gray-900">{{ driver.alerts }}</span>
               </div>
             </div>
           </div>
@@ -82,68 +90,93 @@
 
       <!-- Tabs -->
       <template v-if="driver && !isLoading">
-        <div class="tabs-container">
+        <div class="bg-white rounded-xl p-2 flex gap-2 mb-6 shadow-sm overflow-x-auto">
           <button
             v-for="tab in tabs"
             :key="tab.id"
             @click="activeTab = tab.id"
-            class="tab-button"
-            :class="{ active: activeTab === tab.id }"
+            :class="[
+              'flex-1 min-w-[160px] flex items-center justify-center gap-2 py-3 px-5 bg-transparent border-none rounded-lg text-gray-500 text-sm font-semibold cursor-pointer transition-all duration-300',
+              activeTab === tab.id ? 'bg-gradient-to-r from-primary to-primary-dark text-white shadow-lg' : 'hover:bg-gray-100 hover:text-gray-900'
+            ]"
           >
-            <span class="tab-icon" v-html="tab.icon"></span>
-            <span class="tab-label">{{ tab.label }}</span>
-            <span v-if="tab.badge !== undefined" class="tab-badge">{{ tab.badge }}</span>
+            <span class="flex items-center justify-center" v-html="tab.icon"></span>
+            <span>{{ tab.label }}</span>
+            <span v-if="tab.badge !== undefined" :class="['py-0.5 px-2 rounded-xl text-xs font-bold', activeTab === tab.id ? 'bg-white/20' : 'bg-black/10']">
+              {{ tab.badge }}
+            </span>
           </button>
         </div>
 
         <!-- Tab Content -->
-        <div class="tab-content">
+        <div class="min-h-[400px]">
           <!-- TAB 1: Alertas -->
-          <div v-show="activeTab === 'alerts'" class="alerts-tab">
-            <div class="section-header">
-              <h2>Alertas Recientes</h2>
-              <div class="filter-group">
-                <button
-                  v-for="filter in alertFilters"
-                  :key="filter.value"
-                  @click="selectedAlertFilter = filter.value"
-                  class="filter-btn"
-                  :class="{ active: selectedAlertFilter === filter.value }"
-                >
-                  {{ filter.label }}
-                </button>
-              </div>
-            </div>
-
-            <div v-if="filteredAlerts.length === 0" class="empty-state">
-              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-              </svg>
-              <p>No hay alertas para mostrar</p>
-            </div>
-
-            <div v-else class="alerts-list">
-              <div
-                v-for="alert in filteredAlerts"
-                :key="alert.id"
-                class="alert-card"
-                :class="`severity-${alert.severity.toLowerCase()}`"
-              >
-                <div class="alert-icon" :class="`icon-${alert.severity.toLowerCase()}`">
-                  <span v-html="getAlertIcon(alert.severity)"></span>
+          <div v-show="activeTab === 'alerts'" class="animate-[fadeIn_0.3s_ease]">
+            <div class="bg-white rounded-xl p-6 shadow-sm">
+              <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                <h2 class="text-2xl font-bold text-gray-900 m-0">Alertas Recientes</h2>
+                <div class="flex gap-2 flex-wrap">
+                  <button
+                    v-for="filter in alertFilters"
+                    :key="filter.value"
+                    @click="selectedAlertFilter = filter.value"
+                    :class="[
+                      'py-2 px-4 bg-gray-100 border border-gray-200 rounded-lg text-gray-500 text-[13px] font-semibold cursor-pointer transition-all duration-300',
+                      selectedAlertFilter === filter.value ? 'bg-primary border-primary text-white' : 'hover:bg-gray-200 hover:border-primary'
+                    ]"
+                  >
+                    {{ filter.label }}
+                  </button>
                 </div>
-                <div class="alert-content">
-                  <div class="alert-header">
-                    <h3 class="alert-title">{{ alert.title }}</h3>
-                    <span class="alert-time">{{ alert.time }}</span>
+              </div>
+
+              <div v-if="filteredAlerts.length === 0" class="flex flex-col items-center justify-center py-20 text-gray-500">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-success mb-4">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                <p>No hay alertas para mostrar</p>
+              </div>
+
+              <div v-else class="flex flex-col gap-4">
+                <div
+                  v-for="alert in filteredAlerts"
+                  :key="alert.id"
+                  :class="[
+                    'flex gap-4 p-5 rounded-xl border-l-4 transition-all duration-300 hover:translate-x-1 hover:shadow-md',
+                    alert.severity === 'Critical' ? 'bg-red-50 border-l-primary' :
+                    alert.severity === 'High' ? 'bg-orange-50 border-l-orange-500' :
+                    alert.severity === 'Medium' ? 'bg-yellow-50 border-l-warning' :
+                    'bg-blue-50 border-l-info'
+                  ]"
+                >
+                  <div :class="[
+                    'w-12 h-12 rounded-[10px] flex items-center justify-center flex-shrink-0',
+                    alert.severity === 'Critical' ? 'bg-red-100 text-primary' :
+                    alert.severity === 'High' ? 'bg-orange-100 text-orange-500' :
+                    alert.severity === 'Medium' ? 'bg-yellow-100 text-warning' :
+                    'bg-blue-100 text-info'
+                  ]">
+                    <span v-html="getAlertIcon(alert.severity)"></span>
                   </div>
-                  <p class="alert-description">{{ alert.description }}</p>
-                  <div class="alert-footer">
-                    <span class="alert-location">📍 {{ alert.location }}</span>
-                    <span class="alert-type-badge" :class="`badge-${alert.severity.toLowerCase()}`">
-                      {{ alert.type }}
-                    </span>
+                  <div class="flex-1 flex flex-col gap-2">
+                    <div class="flex justify-between items-start gap-3">
+                      <h3 class="text-base font-semibold text-gray-900 m-0">{{ alert.title }}</h3>
+                      <span class="text-[13px] text-gray-500 whitespace-nowrap">{{ alert.time }}</span>
+                    </div>
+                    <p class="text-sm text-gray-500 m-0 leading-relaxed">{{ alert.description }}</p>
+                    <div class="flex justify-between items-center mt-2 flex-wrap gap-2">
+                      <span class="text-[13px] text-gray-500">📍 {{ alert.location }}</span>
+                      <span :class="[
+                        'py-1 px-3 rounded-xl text-xs font-semibold',
+                        alert.severity === 'Critical' ? 'bg-red-100 text-primary' :
+                        alert.severity === 'High' ? 'bg-orange-100 text-orange-500' :
+                        alert.severity === 'Medium' ? 'bg-yellow-100 text-warning' :
+                        'bg-blue-100 text-info'
+                      ]">
+                        {{ alert.type }}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -151,17 +184,19 @@
           </div>
 
           <!-- TAB 2: Historial -->
-          <div v-show="activeTab === 'trips'" class="trips-tab">
-            <TripHistoryList
-              :trips="driver.tripHistory || []"
-              :is-loading="isLoadingTrips"
-              @view-trip-details="handleViewTripDetails"
-            />
+          <div v-show="activeTab === 'trips'" class="animate-[fadeIn_0.3s_ease]">
+            <div class="bg-white rounded-xl p-6 shadow-sm min-h-[400px]">
+              <TripHistoryList
+                :trips="driver.tripHistory || []"
+                :is-loading="isLoadingTrips"
+                @view-trip-details="handleViewTripDetails"
+              />
+            </div>
           </div>
 
           <!-- TAB 3: Estadísticas -->
-          <div v-show="activeTab === 'stats'" class="stats-tab">
-            <div class="stats-summary-grid">
+          <div v-show="activeTab === 'stats'" class="flex flex-col gap-6 animate-[fadeIn_0.3s_ease]">
+            <div class="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-5">
               <StatSummaryCard
                 label="Viajes Completados"
                 :value="driverStats.tripsCompleted"
@@ -262,27 +297,25 @@ const router = useRouter()
 const route = useRoute()
 const dashboardStore = useDashboardStore()
 
-// Estado local
 const isLoading = ref(true)
 const isLoadingTrips = ref(false)
 const driver = ref(null)
 const activeTab = ref('alerts')
 const selectedAlertFilter = ref('all')
 
-// ✅ Funciones helper
 const getSeverityLabel = (severity) => {
   return ALERT_SEVERITY_LABELS[severity] || severity
 }
 
 const getStatClass = (severity) => {
   const classMap = {
-    'Critical': 'alert-critical',
-    'High': 'alert-high',
-    'Medium': 'alert-medium',
-    'Low': 'alert-low',
-    'Safe': 'alert-safe'
+    'Critical': 'border-l-primary bg-red-50',
+    'High': 'border-l-orange-500 bg-orange-50',
+    'Medium': 'border-l-warning bg-yellow-50',
+    'Low': 'border-l-info bg-blue-50',
+    'Safe': 'border-l-success bg-green-50'
   }
-  return classMap[severity] || 'alert-safe'
+  return classMap[severity] || 'border-l-gray-200'
 }
 
 const getStatusText = (status) => {
@@ -324,7 +357,6 @@ const handleViewTripDetails = (trip) => {
   console.log('Ver detalles del viaje:', trip)
 }
 
-// Tabs computed
 const tabs = computed(() => [
   {
     id: 'alerts',
@@ -398,7 +430,6 @@ const monthlyAlertsData = computed(() => {
   }))
 })
 
-// ✅ GENERAR ALERTAS BASADAS EN EL DRIVER
 const generateMockAlerts = (driver) => {
   const numAlerts = driver.alerts || driver.totalAlerts || 0
 
@@ -406,10 +437,8 @@ const generateMockAlerts = (driver) => {
     return []
   }
 
-  // ✅ DETERMINAR SEVERITY PREDOMINANTE DEL DRIVER
   const driverSeverity = driver.severity === 'Safe' ? 'Low' : driver.severity
 
-  // ✅ ALERTAS ALINEADAS CON EL SEVERITY DEL DRIVER
   const alertTypesBySeverity = {
     Critical: [
       { title: 'Micro-sueño detectado', type: 'Fatiga', severity: 'Critical', symptoms: ['MicroSleep', 'EyeClosure'] },
@@ -449,19 +478,15 @@ const generateMockAlerts = (driver) => {
     Low: 'Evento menor registrado para análisis. Mantenga precaución.'
   }
 
-  // ✅ SELECCIONAR ALERTAS SEGÚN EL SEVERITY DEL DRIVER
   const availableAlerts = alertTypesBySeverity[driverSeverity] || alertTypesBySeverity.Low
 
   const alerts = []
 
   for (let i = 0; i < numAlerts; i++) {
-    // ✅ 80% de las alertas serán del mismo severity del driver, 20% de otros niveles
     let alert
     if (Math.random() < 0.8) {
-      // Misma severidad
       alert = availableAlerts[Math.floor(Math.random() * availableAlerts.length)]
     } else {
-      // Ocasionalmente una alerta de nivel diferente (pero relacionado)
       const allAlerts = Object.values(alertTypesBySeverity).flat()
       alert = allAlerts[Math.floor(Math.random() * allAlerts.length)]
     }
@@ -485,7 +510,6 @@ const generateMockAlerts = (driver) => {
   return alerts.sort((a, b) => b.timestamp - a.timestamp)
 }
 
-// ✅ GENERAR HISTORIAL DE VIAJES
 const generateMockTrips = (driverId) => {
   const routes = [
     'Lima - Arequipa', 'Lima - Cusco', 'Lima - Trujillo',
@@ -532,7 +556,6 @@ const generateMockTrips = (driverId) => {
   }).sort((a, b) => b.timestamp - a.timestamp)
 }
 
-// Lifecycle
 onMounted(async () => {
   const driverId = route.params.id
 
@@ -567,275 +590,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* Todos los estilos existentes permanecen igual */
-.driver-detail-container {
-  display: flex;
-  min-height: 100vh;
-  background: #F5F7FA;
-  font-family: 'Poppins', sans-serif;
-}
-
-.main-content {
-  margin-left: 280px;
-  flex: 1;
-  padding: 32px;
-  width: calc(100% - 280px);
-}
-
-.page-header {
-  margin-bottom: 32px;
-}
-
-.back-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: white;
-  border: 1px solid #E9ECEF;
-  border-radius: 8px;
-  color: #222222;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  margin-bottom: 24px;
-}
-
-.back-button:hover {
-  background: #F5F7FA;
-  border-color: #C13515;
-  color: #C13515;
-}
-
-.loading-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  gap: 16px;
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #E9ECEF;
-  border-top-color: #C13515;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.driver-header-info {
-  background: white;
-  border-radius: 12px;
-  padding: 32px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  display: flex;
-  gap: 32px;
-  align-items: flex-start;
-}
-
-.driver-avatar-large {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.driver-avatar-large img {
-  width: 120px;
-  height: 120px;
-  border-radius: 16px;
-  object-fit: cover;
-  border: 4px solid #F5F7FA;
-}
-
-.status-badge {
-  position: absolute;
-  bottom: -8px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 6px 16px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.status-badge.active {
-  background: #00CA75;
-  color: white;
-}
-
-.status-badge.resting {
-  background: #FFCD18;
-  color: #222222;
-}
-
-.status-badge.offline {
-  background: #74788D;
-  color: white;
-}
-
-.driver-details-header {
-  flex: 1;
-}
-
-.driver-name {
-  font-size: 32px;
-  font-weight: 700;
-  color: #222222;
-  margin: 0 0 12px 0;
-}
-
-.driver-meta {
-  display: flex;
-  gap: 24px;
-  margin-bottom: 24px;
-  flex-wrap: wrap;
-}
-
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #74788D;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.meta-item svg {
-  color: #C13515;
-}
-
-.quick-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 16px;
-  margin-top: 20px;
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 12px 16px;
-  background: #F5F7FA;
-  border-radius: 8px;
-  border-left: 3px solid #E9ECEF;
-}
-
-.stat-item.alert-critical {
-  background: #FFF5F5;
-  border-left-color: #C13515;
-}
-
-.stat-item.alert-high {
-  background: #FFF8E1;
-  border-left-color: #FFA500;
-}
-
-.stat-item.alert-medium {
-  background: #FFFBEB;
-  border-left-color: #FFCD18;
-}
-
-.stat-item.alert-low {
-  background: #F0F9FF;
-  border-left-color: #0066CC;
-}
-
-.stat-item.alert-safe {
-  background: #E8F8F0;
-  border-left-color: #00CA75;
-}
-
-.stat-label {
-  font-size: 12px;
-  color: #74788D;
-  font-weight: 500;
-}
-
-.stat-value {
-  font-size: 18px;
-  font-weight: 700;
-  color: #222222;
-}
-
-/* TABS */
-.tabs-container {
-  background: white;
-  border-radius: 12px;
-  padding: 8px;
-  display: flex;
-  gap: 8px;
-  margin-bottom: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  overflow-x: auto;
-}
-
-.tab-button {
-  flex: 1;
-  min-width: 160px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 20px;
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  color: #74788D;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.tab-button:hover {
-  background: #F5F7FA;
-  color: #222222;
-}
-
-.tab-button.active {
-  background: linear-gradient(135deg, #C13515 0%, #8B2810 100%);
-  color: white;
-  box-shadow: 0 4px 12px rgba(193, 53, 21, 0.3);
-}
-
-.tab-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.tab-badge {
-  background: rgba(0, 0, 0, 0.1);
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.tab-button.active .tab-badge {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-/* TAB CONTENT */
-.tab-content {
-  min-height: 400px;
-}
-
-.alerts-tab, .trips-tab, .stats-tab {
-  animation: fadeIn 0.3s ease;
-}
-
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -847,289 +601,24 @@ onMounted(async () => {
   }
 }
 
-/* ALERTS TAB */
-.alerts-tab {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.section-header h2 {
-  font-size: 24px;
-  font-weight: 700;
-  color: #222222;
-  margin: 0;
-}
-
-.filter-group {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.filter-btn {
-  padding: 8px 16px;
-  background: #F5F7FA;
-  border: 1px solid #E9ECEF;
-  border-radius: 8px;
-  color: #74788D;
-  font-size: 13px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.filter-btn:hover {
-  background: #E9ECEF;
-  border-color: #C13515;
-}
-
-.filter-btn.active {
-  background: #C13515;
-  border-color: #C13515;
-  color: white;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 20px;
-  color: #74788D;
-  text-align: center;
-}
-
-.empty-state svg {
-  color: #00CA75;
-  margin-bottom: 16px;
-}
-
-.alerts-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.alert-card {
-  display: flex;
-  gap: 16px;
-  padding: 20px;
-  background: #F5F7FA;
-  border-radius: 12px;
-  border-left: 4px solid transparent;
-  transition: all 0.3s ease;
-}
-
-.alert-card:hover {
-  transform: translateX(4px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.alert-card.severity-critical {
-  background: #FFF5F5;
-  border-left-color: #C13515;
-}
-
-.alert-card.severity-high {
-  background: #FFF8E1;
-  border-left-color: #FFA500;
-}
-
-.alert-card.severity-medium {
-  background: #FFFBEB;
-  border-left-color: #FFCD18;
-}
-
-.alert-card.severity-low {
-  background: #F0F9FF;
-  border-left-color: #0066CC;
-}
-
-.alert-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.alert-icon.icon-critical {
-  background: #FFE8E8;
-  color: #C13515;
-}
-
-.alert-icon.icon-high {
-  background: #FFF8E1;
-  color: #FFA500;
-}
-
-.alert-icon.icon-medium {
-  background: #FFFBEB;
-  color: #FFCD18;
-}
-
-.alert-icon.icon-low {
-  background: #E3F2FD;
-  color: #0066CC;
-}
-
-.alert-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.alert-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.alert-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #222222;
-  margin: 0;
-}
-
-.alert-time {
-  font-size: 13px;
-  color: #74788D;
-  white-space: nowrap;
-}
-
-.alert-description {
-  font-size: 14px;
-  color: #74788D;
-  margin: 0;
-  line-height: 1.6;
-}
-
-.alert-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 8px;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.alert-location {
-  font-size: 13px;
-  color: #74788D;
-}
-
-.alert-type-badge {
-  padding: 4px 12px;
-  background: white;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #222222;
-}
-
-.alert-type-badge.badge-critical {
-  background: #FFE8E8;
-  color: #C13515;
-}
-
-.alert-type-badge.badge-high {
-  background: #FFF8E1;
-  color: #FFA500;
-}
-
-.alert-type-badge.badge-medium {
-  background: #FFFBEB;
-  color: #FFCD18;
-}
-
-.alert-type-badge.badge-low {
-  background: #E3F2FD;
-  color: #0066CC;
-}
-
-/* TRIPS TAB */
-.trips-tab {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  min-height: 400px;
-}
-
-/* STATS TAB */
-.stats-tab {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.stats-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-}
-
-/* RESPONSIVE */
 @media (max-width: 768px) {
-  .main-content {
+  main {
     margin-left: 0;
     width: 100%;
     padding: 20px;
   }
 
-  .driver-header-info {
+  .flex.gap-8 {
     flex-direction: column;
     align-items: center;
     text-align: center;
   }
 
-  .driver-meta {
+  .flex.gap-6 {
     justify-content: center;
   }
 
-  .quick-stats {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .tabs-container {
-    overflow-x: auto;
-  }
-
-  .tab-button {
-    flex-shrink: 0;
-  }
-
-  .section-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .filter-group {
-    width: 100%;
-  }
-
-  .alert-card {
-    flex-direction: column;
-  }
-
-  .stats-summary-grid {
+  .grid.grid-cols-\[repeat\(auto-fit\,minmax\(240px\,1fr\)\)\] {
     grid-template-columns: 1fr;
   }
 }

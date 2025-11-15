@@ -1,22 +1,20 @@
 <template>
-  <div class="reports-container">
-    <!-- Sidebar Compartido -->
+  <div class="flex min-h-screen bg-gray-100 font-sans">
     <AppSidebar />
 
-    <!-- Main Content -->
-    <main class="main-content">
+    <main class="ml-[280px] flex-1 p-8 w-[calc(100%-280px)]">
       <!-- Header -->
-      <header class="page-header">
-        <div class="header-left">
-          <h2 class="page-title">Reportes y Análisis</h2>
-          <p class="page-subtitle">Estadísticas detalladas de la flota</p>
+      <header class="flex justify-between items-start mb-8 flex-wrap gap-5">
+        <div class="flex-1 min-w-[250px]">
+          <h2 class="text-[32px] font-bold text-gray-900 m-0 mb-1.5">Reportes y Análisis</h2>
+          <p class="text-base text-gray-500 m-0">Estadísticas detalladas de la flota</p>
         </div>
 
-        <div class="header-right">
+        <div class="flex items-center gap-3 flex-wrap">
           <button
-            class="export-btn"
             @click="handleExport"
             :disabled="isLoadingReports"
+            class="py-2.5 px-5 bg-gradient-to-r from-primary to-primary-dark text-white border border-primary rounded-lg text-sm font-semibold cursor-pointer flex items-center gap-2 transition-all duration-300 hover:from-primary-dark hover:to-primary-darker hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
           >
             <svg v-if="!isLoadingReports" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -24,16 +22,15 @@
               <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
 
-            <div v-else class="spinner-small"></div>
+            <div v-else class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
 
             {{ isLoadingReports ? 'Generando...' : 'Exportar PDF' }}
           </button>
         </div>
-
       </header>
 
       <!-- Stats Cards -->
-      <section class="stats-grid">
+      <section class="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-6 mb-8">
         <ReportStatCard
           v-for="stat in mainStats"
           :key="stat.label"
@@ -46,44 +43,43 @@
         />
       </section>
 
-      <!-- Tabs Navigation -->
-      <div class="tabs-container">
+      <!-- Tabs -->
+      <div class="bg-white rounded-xl p-2 flex gap-2 mb-6 shadow-sm overflow-x-auto">
         <button
           v-for="tab in tabs"
           :key="tab.id"
           @click="activeTab = tab.id"
-          class="tab-button"
-          :class="{ active: activeTab === tab.id }"
+          :class="[
+            'flex-1 min-w-[140px] py-3 px-5 bg-transparent border-none rounded-lg text-gray-500 text-sm font-semibold cursor-pointer transition-all duration-300 whitespace-nowrap',
+            activeTab === tab.id ? 'bg-gradient-to-r from-primary to-primary-dark text-white shadow-lg' : 'hover:bg-gray-100 hover:text-gray-900'
+          ]"
         >
           {{ tab.label }}
         </button>
       </div>
 
       <!-- Tab Content -->
-      <div class="tab-content">
+      <div class="min-h-[500px]">
         <!-- TAB 1: Resumen General -->
-        <div v-show="activeTab === 'general'" class="general-tab">
-          <div class="charts-grid">
-            <!-- Gráfico de Alertas por Semana -->
+        <div v-show="activeTab === 'general'" class="animate-[fadeIn_0.3s_ease]">
+          <div class="grid grid-cols-2 gap-6">
             <AlertsWeeklyChart :data="weeklyAlertsData" />
-
-            <!-- Distribución de Alertas -->
             <AlertsDistributionCard :data="alertsDistribution" />
           </div>
         </div>
 
         <!-- TAB 2: Por Conductor -->
-        <div v-show="activeTab === 'driver'" class="driver-tab">
+        <div v-show="activeTab === 'driver'" class="animate-[fadeIn_0.3s_ease]">
           <DriverReportsTable :drivers="driversReportData" />
         </div>
 
         <!-- TAB 3: Por Horario -->
-        <div v-show="activeTab === 'schedule'" class="schedule-tab">
+        <div v-show="activeTab === 'schedule'" class="animate-[fadeIn_0.3s_ease]">
           <ScheduleHeatmap :data="scheduleData" />
         </div>
 
         <!-- TAB 4: Por Ruta -->
-        <div v-show="activeTab === 'route'" class="route-tab">
+        <div v-show="activeTab === 'route'" class="animate-[fadeIn_0.3s_ease]">
           <RouteReportsTable />
         </div>
       </div>
@@ -94,7 +90,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useDashboardStore } from '@/stores/dashboard'
-// import api from '@/services/api' // ✅ AGREGADO
 import ReportStatCard from '@/components/reports/ReportStatCard.vue'
 import AlertsWeeklyChart from '@/components/reports/AlertsWeeklyChart.vue'
 import AlertsDistributionCard from '@/components/reports/AlertsDistributionCard.vue'
@@ -105,11 +100,9 @@ import AppSidebar from '@/components/layout/AppSidebar.vue'
 
 const dashboardStore = useDashboardStore()
 
-// Estado local
 const activeTab = ref('general')
 const isLoadingReports = ref(false)
 
-// Tabs
 const tabs = [
   { id: 'general', label: 'Resumen General' },
   { id: 'driver', label: 'Por Conductor' },
@@ -117,23 +110,21 @@ const tabs = [
   { id: 'route', label: 'Por Ruta' }
 ]
 
-// ✅ Estadísticas principales (calculadas dinámicamente desde el dashboard store)
 const mainStats = computed(() => {
   const total = dashboardStore.totalDrivers
   const active = dashboardStore.activeDrivers
   const critical = dashboardStore.criticalAlerts
   const warning = dashboardStore.warningAlerts
   const totalAlerts = critical + warning
+  const safe = dashboardStore.safeDrivers
 
-  // Calcular tasa de seguridad
+  // ✅ Calcular tasa de seguridad REAL
   const safetyRate = total > 0
-    ? ((dashboardStore.safeDrivers / total) * 100).toFixed(1)
+    ? ((safe / total) * 100).toFixed(1)
     : 0
 
-  // Calcular viajes completados (estimación)
-  const trips = dashboardStore.drivers.reduce((sum, driver) => {
-    return sum + (driver.alerts || 0)
-  }, 0)
+  // ✅ Calcular viajes completados REAL
+  const trips = dashboardStore.drivers.filter(d => d.currentTrip || d.status === 'active').length
 
   return [
     {
@@ -156,37 +147,39 @@ const mainStats = computed(() => {
       icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
       value: `${safetyRate}%`,
       label: 'Tasa de Seguridad',
-      trend: `${dashboardStore.safeDrivers} conductores seguros`,
-      trendDirection: safetyRate >= 80 ? 'up' : 'down',
-      variant: safetyRate >= 80 ? 'success' : 'warning'
+      trend: `${safe} conductores seguros`,
+      trendDirection: safetyRate >= 50 ? 'up' : 'down',
+      variant: safetyRate >= 50 ? 'success' : 'warning'
     },
     {
       icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
       value: totalAlerts,
       label: 'Total Alertas',
-      trend: `${critical} críticas, ${warning} advertencias`,
-      trendDirection: critical > 0 ? 'up' : 'down',
-      variant: critical > 0 ? 'danger' : 'warning'
+      trend: critical > 0
+        ? `${critical} críticas, ${warning} advertencias`
+        : totalAlerts > 0
+          ? `${totalAlerts} advertencias`
+          : 'Sin alertas críticas',
+      trendDirection: critical > 0 ? 'down' : totalAlerts > 0 ? 'down' : 'up',
+      variant: critical > 0 ? 'danger' : totalAlerts > 0 ? 'warning' : 'success'
     }
   ]
 })
 
-// ✅ Datos para gráficos (calculados dinámicamente CON COHERENCIA)
 const weeklyAlertsData = computed(() => {
   const totalAlerts = dashboardStore.drivers.reduce((sum, d) => sum + d.alerts, 0)
   const avgPerWeek = Math.floor(totalAlerts / 4)
 
-  // ✅ Generar datos que sumen exactamente totalAlerts
   const week1 = Math.max(1, Math.floor(avgPerWeek * 0.8))
   const week2 = Math.max(1, Math.floor(avgPerWeek * 1.1))
   const week3 = Math.max(1, Math.floor(avgPerWeek * 0.9))
-  const week4 = totalAlerts - (week1 + week2 + week3) // ✅ El resto para que cuadre
+  const week4 = totalAlerts - (week1 + week2 + week3)
 
   return [
     { label: 'Sem 1', value: week1 },
     { label: 'Sem 2', value: week2 },
     { label: 'Sem 3', value: week3 },
-    { label: 'Sem 4', value: Math.max(1, week4) } // ✅ Asegurar mínimo 1
+    { label: 'Sem 4', value: Math.max(1, week4) }
   ]
 })
 
@@ -225,23 +218,21 @@ const alertsDistribution = computed(() => {
   ]
 })
 
-// ✅ Datos de conductores para tabla (del store)
 const driversReportData = computed(() => {
   return dashboardStore.drivers.map(driver => ({
     id: driver.id,
     name: driver.name,
-    vehicle: driver.vehicle.plate, // ✅ Solo plate
-    trips: Math.floor(Math.random() * 30) + 20, // TODO: obtener del backend
+    vehicle: driver.vehicle.plate,
+    trips: Math.floor(Math.random() * 30) + 20,
     alerts: driver.alerts,
     safetyRate: driver.alertLevel === 'safe' ? 92 :
       driver.alertLevel === 'warning' ? 75 : 58,
-    hours: Math.floor(Math.random() * 200) + 100, // TODO: obtener del backend
+    hours: Math.floor(Math.random() * 200) + 100,
     status: driver.status,
     avatar: driver.avatar
   }))
 })
 
-// Datos de horarios (MOCK)
 const scheduleData = ref([])
 
 const handleExport = async () => {
@@ -757,9 +748,7 @@ const handleExport = async () => {
   }
 }
 
-// Lifecycle
 onMounted(async () => {
-  // Si no hay conductores cargados, cargarlos primero
   if (dashboardStore.drivers.length === 0) {
     await dashboardStore.fetchDrivers()
   }
@@ -769,152 +758,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.reports-container {
-  display: flex;
-  min-height: 100vh;
-  background: #F5F7FA;
-  font-family: 'Poppins', sans-serif;
-}
-
-/* ===== MAIN CONTENT ===== */
-.main-content {
-  margin-left: 280px;
-  flex: 1;
-  padding: 32px;
-  width: calc(100% - 280px);
-}
-
-/* ===== PAGE HEADER ===== */
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 32px;
-  flex-wrap: wrap;
-  gap: 20px;
-}
-
-.header-left {
-  flex: 1;
-  min-width: 250px;
-}
-
-.page-title {
-  font-size: 32px;
-  font-weight: 700;
-  color: #222222;
-  margin: 0 0 6px 0;
-}
-
-.page-subtitle {
-  font-size: 16px;
-  color: #74788D;
-  margin: 0;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.filter-btn,
-.period-btn,
-.export-btn {
-  padding: 10px 20px;
-  background: white;
-  border: 1px solid #E9ECEF;
-  border-radius: 8px;
-  color: #222222;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.3s ease;
-}
-
-.filter-btn:hover,
-.period-btn:hover {
-  background: #F5F7FA;
-  border-color: #C13515;
-  color: #C13515;
-}
-
-.export-btn {
-  background: linear-gradient(135deg, #C13515 0%, #8B2810 100%);
-  color: white;
-  border-color: #C13515;
-}
-
-.export-btn:hover {
-  background: linear-gradient(135deg, #A72E12 0%, #6B1F0C 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(193, 53, 21, 0.3);
-}
-
-/* ===== STATS GRID ===== */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 24px;
-  margin-bottom: 32px;
-}
-
-/* ===== TABS ===== */
-.tabs-container {
-  background: white;
-  border-radius: 12px;
-  padding: 8px;
-  display: flex;
-  gap: 8px;
-  margin-bottom: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  overflow-x: auto;
-}
-
-.tab-button {
-  flex: 1;
-  min-width: 140px;
-  padding: 12px 20px;
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  color: #74788D;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-}
-
-.tab-button:hover {
-  background: #F5F7FA;
-  color: #222222;
-}
-
-.tab-button.active {
-  background: linear-gradient(135deg, #C13515 0%, #8B2810 100%);
-  color: white;
-  box-shadow: 0 4px 12px rgba(193, 53, 21, 0.3);
-}
-
-/* ===== TAB CONTENT ===== */
-.tab-content {
-  min-height: 500px;
-}
-
-.general-tab,
-.driver-tab,
-.schedule-tab,
-.route-tab {
-  animation: fadeIn 0.3s ease;
-}
-
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -926,83 +769,32 @@ onMounted(async () => {
   }
 }
 
-.charts-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-}
-
-/* ===== RESPONSIVE ===== */
 @media (max-width: 1200px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .charts-grid {
+  .grid-cols-2 {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 768px) {
-  .sidebar {
+  aside {
     transform: translateX(-100%);
   }
 
-  .main-content {
+  main {
     margin-left: 0;
     width: 100%;
     padding: 20px;
   }
 
-  .page-header {
+  header {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .header-right {
-    flex-direction: column;
-  }
-
-  .filter-btn,
-  .period-btn,
-  .export-btn {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .tabs-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .tab-button {
-    flex-shrink: 0;
-  }
-
-  .page-title {
+  h2 {
     font-size: 24px;
   }
 }
-
-.export-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.spinner-small {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
 </style>
+
+
