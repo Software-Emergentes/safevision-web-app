@@ -166,26 +166,30 @@ const mainStats = computed(() => {
   ]
 })
 
-// ✅ Datos para gráficos (calculados dinámicamente)
+// ✅ Datos para gráficos (calculados dinámicamente CON COHERENCIA)
 const weeklyAlertsData = computed(() => {
-  const totalAlerts = dashboardStore.criticalAlerts + dashboardStore.warningAlerts
+  const totalAlerts = dashboardStore.drivers.reduce((sum, d) => sum + d.alerts, 0)
   const avgPerWeek = Math.floor(totalAlerts / 4)
 
+  // ✅ Generar datos que sumen exactamente totalAlerts
+  const week1 = Math.max(1, Math.floor(avgPerWeek * 0.8))
+  const week2 = Math.max(1, Math.floor(avgPerWeek * 1.1))
+  const week3 = Math.max(1, Math.floor(avgPerWeek * 0.9))
+  const week4 = totalAlerts - (week1 + week2 + week3) // ✅ El resto para que cuadre
+
   return [
-    { label: 'Sem 1', value: Math.max(1, avgPerWeek - Math.floor(Math.random() * 5)) },
-    { label: 'Sem 2', value: Math.max(1, avgPerWeek + Math.floor(Math.random() * 5)) },
-    { label: 'Sem 3', value: Math.max(1, avgPerWeek - Math.floor(Math.random() * 3)) },
-    { label: 'Sem 4', value: Math.max(1, avgPerWeek + Math.floor(Math.random() * 3)) }
+    { label: 'Sem 1', value: week1 },
+    { label: 'Sem 2', value: week2 },
+    { label: 'Sem 3', value: week3 },
+    { label: 'Sem 4', value: Math.max(1, week4) } // ✅ Asegurar mínimo 1
   ]
 })
 
 const alertsDistribution = computed(() => {
-  // ✅ CONTAR por SEVERITY del DB
-  const critical = dashboardStore.drivers.filter(d => d.severity === 'Critical').length
-  const high = dashboardStore.drivers.filter(d => d.severity === 'High').length
-  const medium = dashboardStore.drivers.filter(d => d.severity === 'Medium').length
-  const low = dashboardStore.drivers.filter(d => d.severity === 'Low').length
-
+  const critical = dashboardStore.drivers.filter(d => d.severity === 'Critical').reduce((sum, d) => sum + d.alerts, 0)
+  const high = dashboardStore.drivers.filter(d => d.severity === 'High').reduce((sum, d) => sum + d.alerts, 0)
+  const medium = dashboardStore.drivers.filter(d => d.severity === 'Medium').reduce((sum, d) => sum + d.alerts, 0)
+  const low = dashboardStore.drivers.filter(d => d.severity === 'Low').reduce((sum, d) => sum + d.alerts, 0)
   const total = critical + high + medium + low
 
   return [
@@ -211,7 +215,7 @@ const alertsDistribution = computed(() => {
       label: 'Alertas Leves',
       value: low,
       percentage: total > 0 ? Math.round((low / total) * 100) : 0,
-      color: '#0066CC' // ✅ AZUL
+      color: '#0066CC'
     }
   ]
 })
