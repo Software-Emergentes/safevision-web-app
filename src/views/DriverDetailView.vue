@@ -1,10 +1,9 @@
 <template>
   <div class="driver-detail-container">
-    <!-- Sidebar Compartido -->
     <AppSidebar />
-    <!-- Main Content -->
+
     <main class="main-content">
-      <!-- Header con info del conductor -->
+      <!-- Header -->
       <header class="page-header">
         <button @click="goBack" class="back-button">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -14,11 +13,13 @@
           Volver
         </button>
 
+        <!-- Loading State -->
         <div v-if="isLoading" class="loading-header">
           <div class="spinner"></div>
           <p>Cargando información del conductor...</p>
         </div>
 
+        <!-- Driver Info -->
         <div v-else-if="driver" class="driver-header-info">
           <div class="driver-avatar-large">
             <img :src="driver.avatar" :alt="driver.name" />
@@ -36,7 +37,7 @@
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                   <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                 </svg>
-                {{ driver.vehicle.plate }}
+                {{ driver.vehicle?.plate || 'N/A' }}
               </span>
 
               <span class="meta-item" v-if="driver.currentTrip">
@@ -52,7 +53,7 @@
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                   <polyline points="22,6 12,13 2,6"></polyline>
                 </svg>
-                {{ driver.contactInfo.email }}
+                {{ driver.contactInfo?.email || 'N/A' }}
               </span>
             </div>
 
@@ -79,8 +80,8 @@
         </div>
       </header>
 
-      <!-- Tabs Navigation -->
-      <template v-if="driver">
+      <!-- Tabs -->
+      <template v-if="driver && !isLoading">
         <div class="tabs-container">
           <button
             v-for="tab in tabs"
@@ -91,13 +92,13 @@
           >
             <span class="tab-icon" v-html="tab.icon"></span>
             <span class="tab-label">{{ tab.label }}</span>
-            <span v-if="tab.badge" class="tab-badge">{{ tab.badge }}</span>
+            <span v-if="tab.badge !== undefined" class="tab-badge">{{ tab.badge }}</span>
           </button>
         </div>
 
         <!-- Tab Content -->
         <div class="tab-content">
-          <!-- TAB 1: Alertas Recientes -->
+          <!-- TAB 1: Alertas -->
           <div v-show="activeTab === 'alerts'" class="alerts-tab">
             <div class="section-header">
               <h2>Alertas Recientes</h2>
@@ -141,18 +142,18 @@
                   <div class="alert-footer">
                     <span class="alert-location">📍 {{ alert.location }}</span>
                     <span class="alert-type-badge" :class="`badge-${alert.severity.toLowerCase()}`">
-                        {{ alert.type }}
-                     </span>
+                      {{ alert.type }}
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- TAB 2: Historial de Viajes -->
+          <!-- TAB 2: Historial -->
           <div v-show="activeTab === 'trips'" class="trips-tab">
             <TripHistoryList
-              :trips="driver?.tripHistory || []"
+              :trips="driver.tripHistory || []"
               :is-loading="isLoadingTrips"
               @view-trip-details="handleViewTripDetails"
             />
@@ -209,10 +210,10 @@
 
               <StatSummaryCard
                 label="Alertas Totales"
-                :value="driver?.alerts || 0"
-                :trend="`${driver?.lastAlert || 'Sin alertas recientes'}`"
-                :trend-direction="driver?.alertLevel === 'critical' ? 'down' : 'up'"
-                :variant="driver?.alertLevel === 'critical' ? 'danger' : 'warning'"
+                :value="driver.alerts || 0"
+                :trend="`${driver.lastAlert || 'Sin alertas recientes'}`"
+                :trend-direction="driver.severity === 'Critical' ? 'down' : 'up'"
+                :variant="driver.severity === 'Critical' ? 'danger' : 'warning'"
               >
                 <template #icon>
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -224,7 +225,6 @@
               </StatSummaryCard>
             </div>
 
-            <!-- Gráficos -->
             <DriverStatsChart
               title="Rendimiento Mensual"
               :data="monthlyPerformanceData"
@@ -256,95 +256,34 @@ import AppSidebar from '@/components/layout/AppSidebar.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useDashboardStore } from '@/stores/dashboard'
-import { ALERT_SEVERITY } from '@/utils/constants'  // ✅ AGREGAR AL TOP
-import api from '@/services/api'
-import { getRelativeTime } from '@/utils/helpers.js'
+import { ALERT_SEVERITY, ALERT_SEVERITY_LABELS } from '@/utils/constants'
 
 const router = useRouter()
 const route = useRoute()
 const dashboardStore = useDashboardStore()
-const isLoadingTrips = ref(false)
 
 // Estado local
 const isLoading = ref(true)
+const isLoadingTrips = ref(false)
 const driver = ref(null)
 const activeTab = ref('alerts')
 const selectedAlertFilter = ref('all')
 
-// Tabs
-const tabs = computed(() => [
-  {
-    id: 'alerts',
-    label: 'Alertas Recientes',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
-    badge: driver.value?.alerts || 0
-  },
-  {
-    id: 'trips',
-    label: 'Historial de Viajes',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>'
-  },
-  {
-    id: 'stats',
-    label: 'Estadísticas',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>'
+// ✅ Funciones helper
+const getSeverityLabel = (severity) => {
+  return ALERT_SEVERITY_LABELS[severity] || severity
+}
+
+const getStatClass = (severity) => {
+  const classMap = {
+    'Critical': 'alert-critical',
+    'High': 'alert-high',
+    'Medium': 'alert-medium',
+    'Low': 'alert-low',
+    'Safe': 'alert-safe'
   }
-])
-
-// ✅ FILTROS ACTUALIZADOS
-const alertFilters = [
-  { label: 'Todas', value: 'all' },
-  { label: 'Críticas', value: ALERT_SEVERITY.CRITICAL },    // ✅ USAR CONSTANTE
-  { label: 'Altas', value: ALERT_SEVERITY.HIGH },           // ✅ USAR CONSTANTE
-  { label: 'Moderadas', value: ALERT_SEVERITY.MEDIUM },     // ✅ USAR CONSTANTE
-  { label: 'Leves', value: ALERT_SEVERITY.LOW }             // ✅ USAR CONSTANTE
-]
-
-const filteredAlerts = computed(() => {
-  if (!driver.value?.alertHistory) return []
-
-  if (selectedAlertFilter.value === 'all') {
-    return driver.value.alertHistory
-  }
-
-  return driver.value.alertHistory.filter(
-    alert => alert.severity === selectedAlertFilter.value
-  )
-})
-
-const driverStats = computed(() => {
-  if (!driver.value) return {
-    tripsCompleted: 0,
-    safetyRate: 0,
-    avgFatigue: 0
-  }
-
-  const tripHistory = driver.value.tripHistory || []
-  const monitoring = driver.value.monitoring || {}
-
-  return {
-    tripsCompleted: tripHistory.length,
-    safetyRate: driver.value.alertLevel === 'safe' ? 92 :
-      driver.value.alertLevel === 'warning' ? 75 : 58,
-    avgFatigue: monitoring.fatigueScore || 0
-  }
-})
-
-const monthlyPerformanceData = computed(() => {
-  const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun']
-  return months.map((month, index) => ({
-    label: month,
-    value: 65 + (index * 3) + Math.floor(Math.random() * 10)
-  }))
-})
-
-const monthlyAlertsData = computed(() => {
-  const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun']
-  return months.map((month, index) => ({
-    label: month,
-    value: 15 - (index * 2) + Math.floor(Math.random() * 5)
-  }))
-})
+  return classMap[severity] || 'alert-safe'
+}
 
 const getStatusText = (status) => {
   const statusMap = {
@@ -378,98 +317,96 @@ const calculateTripDuration = (startTime) => {
 }
 
 const goBack = () => {
-  console.log('🔙 Volviendo al dashboard')
-  router.push('/dashboard').catch(err => console.error('Error al volver:', err))
+  router.push('/dashboard')
 }
 
 const handleViewTripDetails = (trip) => {
   console.log('Ver detalles del viaje:', trip)
 }
 
-const fetchDriverData = async (driverId) => {
-  isLoading.value = true
-
-  try {
-    const driverData = await api.driver.getDriverById(driverId)
-    const trips = await api.trip.getTripsByDriver(driverId)
-
-    driver.value = {
-      ...driverData,
-      tripHistory: trips || [],
-      alertHistory: generateMockAlerts(driverId)
-    }
-  } catch (error) {
-    console.error('Error al cargar datos del conductor:', error)
-
-    const foundDriver = dashboardStore.drivers.find(d => d.id === parseInt(driverId))
-
-    if (foundDriver) {
-      driver.value = {
-        ...foundDriver,
-        alertHistory: generateMockAlerts(foundDriver.id),
-        tripHistory: generateMockTrips(foundDriver.id)
-      }
-    } else {
-      console.error('Conductor no encontrado')
-      router.push({ name: 'dashboard' })
-    }
-  } finally {
-    isLoading.value = false
+// Tabs computed
+const tabs = computed(() => [
+  {
+    id: 'alerts',
+    label: 'Alertas Recientes',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
+    badge: driver.value?.alerts || 0
+  },
+  {
+    id: 'trips',
+    label: 'Historial de Viajes',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>'
+  },
+  {
+    id: 'stats',
+    label: 'Estadísticas',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>'
   }
-}
+])
 
+const alertFilters = [
+  { label: 'Todas', value: 'all' },
+  { label: 'Críticas', value: ALERT_SEVERITY.CRITICAL },
+  { label: 'Altas', value: ALERT_SEVERITY.HIGH },
+  { label: 'Moderadas', value: ALERT_SEVERITY.MEDIUM },
+  { label: 'Leves', value: ALERT_SEVERITY.LOW }
+]
+
+const filteredAlerts = computed(() => {
+  if (!driver.value?.alertHistory) return []
+
+  if (selectedAlertFilter.value === 'all') {
+    return driver.value.alertHistory
+  }
+
+  return driver.value.alertHistory.filter(
+    alert => alert.severity === selectedAlertFilter.value
+  )
+})
+
+const driverStats = computed(() => {
+  if (!driver.value) return {
+    tripsCompleted: 0,
+    safetyRate: 0,
+    avgFatigue: 0
+  }
+
+  const tripHistory = driver.value.tripHistory || []
+
+  return {
+    tripsCompleted: tripHistory.length,
+    safetyRate: driver.value.severity === 'Safe' ? 92 :
+      driver.value.severity === 'Low' ? 85 :
+        driver.value.severity === 'Medium' ? 75 : 58,
+    avgFatigue: driver.value.monitoring?.fatigueScore || 0
+  }
+})
+
+const monthlyPerformanceData = computed(() => {
+  const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun']
+  return months.map((month, index) => ({
+    label: month,
+    value: 65 + (index * 3) + Math.floor(Math.random() * 10)
+  }))
+})
+
+const monthlyAlertsData = computed(() => {
+  const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun']
+  return months.map((month, index) => ({
+    label: month,
+    value: Math.max(1, 15 - (index * 2) + Math.floor(Math.random() * 5))
+  }))
+})
+
+// Mock data generators
 const generateMockAlerts = (driverId) => {
-  // ✅ OBTENER DATOS DEL CONDUCTOR ACTUAL
-  const currentDriver = dashboardStore.drivers.find(d => d.id === parseInt(driverId))
-  const totalAlerts = currentDriver?.alerts || 0
-
-  if (totalAlerts === 0) {
-    return [] // ✅ Sin alertas
-  }
-
   const alertTypes = [
-    {
-      title: 'Micro-sueño detectado',
-      type: 'Fatiga',
-      severity: 'Critical',
-      symptoms: ['MicroSleep', 'EyeClosure']
-    },
-    {
-      title: 'Parpadeo excesivo',
-      type: 'Fatiga',
-      severity: 'High',
-      symptoms: ['EyeClosure']
-    },
-    {
-      title: 'Bostezo detectado',
-      type: 'Fatiga',
-      severity: 'Medium',
-      symptoms: ['Yawning']
-    },
-    {
-      title: 'Desviación de carril',
-      type: 'Conducción',
-      severity: 'High',
-      symptoms: ['HeadDroop']
-    },
-    {
-      title: 'Velocidad excesiva',
-      type: 'Conducción',
-      severity: 'Medium',
-      symptoms: []
-    },
-    {
-      title: 'Fatiga leve detectada',
-      type: 'Fatiga',
-      severity: 'Low', // ✅ AGREGAR ALERTAS LEVES
-      symptoms: ['Yawning']
-    },
-    {
-      title: 'Distracción momentánea',
-      type: 'Conducción',
-      severity: 'Low', // ✅ AGREGAR ALERTAS LEVES
-      symptoms: []
-    }
+    { title: 'Micro-sueño detectado', type: 'Fatiga', severity: 'Critical', symptoms: ['MicroSleep', 'EyeClosure'] },
+    { title: 'Parpadeo excesivo', type: 'Fatiga', severity: 'High', symptoms: ['EyeClosure'] },
+    { title: 'Bostezo detectado', type: 'Fatiga', severity: 'Medium', symptoms: ['Yawning'] },
+    { title: 'Desviación de carril', type: 'Conducción', severity: 'High', symptoms: ['HeadDroop'] },
+    { title: 'Velocidad excesiva', type: 'Conducción', severity: 'Medium', symptoms: [] },
+    { title: 'Fatiga severa detectada', type: 'Fatiga', severity: 'Critical', symptoms: ['MicroSleep', 'EyeClosure', 'HeadDroop'] }
   ]
 
   const locations = [
@@ -482,44 +419,31 @@ const generateMockAlerts = (driverId) => {
   ]
 
   const descriptions = {
-    Critical: 'Evento crítico detectado. Se requiere acción inmediata. Detener el vehículo de forma segura.',
-    High: 'Situación de alto riesgo. Requiere atención urgente. Considere detenerse pronto.',
+    Critical: 'Evento crítico detectado. Se requiere acción inmediata.',
+    High: 'Situación de alto riesgo. Requiere atención urgente.',
     Medium: 'Situación que requiere atención. Monitoreo continuo recomendado.',
-    Low: 'Evento menor registrado para análisis. Mantenga precaución.'
+    Low: 'Evento menor registrado para análisis.'
   }
 
-  // ✅ Generar exactamente totalAlerts alertas
-  return Array.from({ length: totalAlerts }, (_, i) => {
+  return Array.from({ length: 12 }, (_, i) => {
     const alert = alertTypes[Math.floor(Math.random() * alertTypes.length)]
-
-    // ✅ Tiempo realista: 5 min - 6 horas atrás
-    const minMinutes = 5
-    const maxMinutes = 360
-    const randomMinutes = Math.floor(Math.random() * (maxMinutes - minMinutes + 1)) + minMinutes
-    const alertTime = Date.now() - (randomMinutes * 60 * 1000)
+    const hoursAgo = Math.floor(Math.random() * 48)
 
     return {
       id: `alert-${driverId}-${i}`,
       ...alert,
       description: descriptions[alert.severity],
       location: locations[Math.floor(Math.random() * locations.length)],
-      time: getRelativeTime(new Date(alertTime).toISOString()),
-      timestamp: alertTime,
-      fatigueSymptoms: alert.symptoms,
-      status: 'New',
-      createdAt: new Date(alertTime).toISOString()
+      time: hoursAgo === 0 ? 'Hace unos minutos' : `Hace ${hoursAgo}h`,
+      timestamp: Date.now() - (hoursAgo * 60 * 60 * 1000)
     }
-  }).sort((a, b) => b.timestamp - a.timestamp) // ✅ Más reciente primero
+  }).sort((a, b) => b.timestamp - a.timestamp)
 }
 
 const generateMockTrips = (driverId) => {
-  const routes = [
-    'Lima - Arequipa', 'Lima - Cusco', 'Lima - Trujillo',
-    'Lima - Chiclayo', 'Lima - Piura', 'Lima - Ica'
-  ]
-
+  const routes = ['Lima - Arequipa', 'Lima - Cusco', 'Lima - Trujillo', 'Lima - Chiclayo', 'Lima - Piura', 'Lima - Ica']
   const severities = ['Low', 'Medium', 'High', 'Critical']
-  const severityWeights = [0.6, 0.25, 0.12, 0.03] // ✅ 60% Low, 25% Medium, 12% High, 3% Critical
+  const severityWeights = [0.5, 0.3, 0.15, 0.05]
 
   const getWeightedSeverity = () => {
     const random = Math.random()
@@ -535,17 +459,14 @@ const generateMockTrips = (driverId) => {
     const daysAgo = i * 2 + Math.floor(Math.random() * 2)
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - daysAgo)
-
     const endDate = new Date(startDate.getTime() + (Math.random() * 8 + 4) * 3600 * 1000)
-
     const severity = getWeightedSeverity()
 
-    // ✅ Alertas basadas en severity (0-6)
     let alerts = 0
-    if (severity === 'Critical') alerts = Math.floor(Math.random() * 2) + 5 // 5-6
-    else if (severity === 'High') alerts = Math.floor(Math.random() * 2) + 3 // 3-4
-    else if (severity === 'Medium') alerts = Math.floor(Math.random() * 2) + 1 // 1-2
-    else alerts = 0 // Low = 0 alertas
+    if (severity === 'Critical') alerts = Math.floor(Math.random() * 8) + 10
+    else if (severity === 'High') alerts = Math.floor(Math.random() * 5) + 5
+    else if (severity === 'Medium') alerts = Math.floor(Math.random() * 5) + 2
+    else alerts = Math.floor(Math.random() * 2)
 
     return {
       id: `trip-${driverId}-${i}`,
@@ -559,41 +480,38 @@ const generateMockTrips = (driverId) => {
   }).sort((a, b) => b.timestamp - a.timestamp)
 }
 
-const getSeverityLabel = (severity) => {
-  const labels = {
-    'Critical': 'Crítico',
-    'High': 'Alto',
-    'Medium': 'Moderado',
-    'Low': 'Leve',
-    'Safe': 'Seguro'
-  }
-  return labels[severity] || severity
-}
-
-const getStatClass = (severity) => {
-  const classMap = {
-    'Critical': 'alert-critical',
-    'High': 'alert-high',
-    'Medium': 'alert-medium',
-    'Low': 'alert-low',
-    'Safe': 'alert-safe'
-  }
-  return classMap[severity] || 'alert-safe'
-}
-
+// Lifecycle
 onMounted(async () => {
   const driverId = route.params.id
 
-  if (dashboardStore.drivers.length === 0) {
-    await dashboardStore.fetchDrivers()
-  }
+  try {
+    if (dashboardStore.drivers.length === 0) {
+      await dashboardStore.fetchDrivers()
+    }
 
-  await fetchDriverData(driverId)
+    const foundDriver = dashboardStore.drivers.find(d => d.id === parseInt(driverId))
+
+    if (foundDriver) {
+      driver.value = {
+        ...foundDriver,
+        alertHistory: generateMockAlerts(foundDriver.id),
+        tripHistory: generateMockTrips(foundDriver.id)
+      }
+    } else {
+      console.error('Conductor no encontrado')
+      router.push({ name: 'dashboard' })
+    }
+  } catch (error) {
+    console.error('Error al cargar conductor:', error)
+    router.push({ name: 'dashboard' })
+  } finally {
+    isLoading.value = false
+  }
 })
 </script>
 
 <style scoped>
-/* Reutilizamos estilos del Dashboard */
+/* Todos los estilos existentes permanecen igual */
 .driver-detail-container {
   display: flex;
   min-height: 100vh;
@@ -601,7 +519,6 @@ onMounted(async () => {
   font-family: 'Poppins', sans-serif;
 }
 
-/* ===== MAIN CONTENT ===== */
 .main-content {
   margin-left: 280px;
   flex: 1;
@@ -609,7 +526,6 @@ onMounted(async () => {
   width: calc(100% - 280px);
 }
 
-/* ===== PAGE HEADER ===== */
 .page-header {
   margin-bottom: 32px;
 }
@@ -763,9 +679,19 @@ onMounted(async () => {
   border-left-color: #C13515;
 }
 
-.stat-item.alert-warning {
+.stat-item.alert-high {
   background: #FFF8E1;
+  border-left-color: #FFA500;
+}
+
+.stat-item.alert-medium {
+  background: #FFFBEB;
   border-left-color: #FFCD18;
+}
+
+.stat-item.alert-low {
+  background: #F0F9FF;
+  border-left-color: #0066CC;
 }
 
 .stat-item.alert-safe {
@@ -785,7 +711,7 @@ onMounted(async () => {
   color: #222222;
 }
 
-/* ===== TABS ===== */
+/* TABS */
 .tabs-container {
   background: white;
   border-radius: 12px;
@@ -814,7 +740,6 @@ onMounted(async () => {
   font-family: inherit;
   cursor: pointer;
   transition: all 0.3s ease;
-  position: relative;
 }
 
 .tab-button:hover {
@@ -846,12 +771,27 @@ onMounted(async () => {
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* ===== TAB CONTENT ===== */
+/* TAB CONTENT */
 .tab-content {
   min-height: 400px;
 }
 
-/* ===== ALERTS TAB ===== */
+.alerts-tab, .trips-tab, .stats-tab {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ALERTS TAB */
 .alerts-tab {
   background: white;
   border-radius: 12px;
@@ -920,11 +860,6 @@ onMounted(async () => {
   margin-bottom: 16px;
 }
 
-.empty-state p {
-  font-size: 16px;
-  margin: 0;
-}
-
 .alerts-list {
   display: flex;
   flex-direction: column;
@@ -946,6 +881,26 @@ onMounted(async () => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
+.alert-card.severity-critical {
+  background: #FFF5F5;
+  border-left-color: #C13515;
+}
+
+.alert-card.severity-high {
+  background: #FFF8E1;
+  border-left-color: #FFA500;
+}
+
+.alert-card.severity-medium {
+  background: #FFFBEB;
+  border-left-color: #FFCD18;
+}
+
+.alert-card.severity-low {
+  background: #F0F9FF;
+  border-left-color: #0066CC;
+}
+
 .alert-icon {
   width: 48px;
   height: 48px;
@@ -954,6 +909,26 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+.alert-icon.icon-critical {
+  background: #FFE8E8;
+  color: #C13515;
+}
+
+.alert-icon.icon-high {
+  background: #FFF8E1;
+  color: #FFA500;
+}
+
+.alert-icon.icon-medium {
+  background: #FFFBEB;
+  color: #FFCD18;
+}
+
+.alert-icon.icon-low {
+  background: #E3F2FD;
+  color: #0066CC;
 }
 
 .alert-content {
@@ -1013,7 +988,27 @@ onMounted(async () => {
   color: #222222;
 }
 
-/* ===== TRIPS TAB ===== */
+.alert-type-badge.badge-critical {
+  background: #FFE8E8;
+  color: #C13515;
+}
+
+.alert-type-badge.badge-high {
+  background: #FFF8E1;
+  color: #FFA500;
+}
+
+.alert-type-badge.badge-medium {
+  background: #FFFBEB;
+  color: #FFCD18;
+}
+
+.alert-type-badge.badge-low {
+  background: #E3F2FD;
+  color: #0066CC;
+}
+
+/* TRIPS TAB */
 .trips-tab {
   background: white;
   border-radius: 12px;
@@ -1022,7 +1017,7 @@ onMounted(async () => {
   min-height: 400px;
 }
 
-/* ===== STATS TAB ===== */
+/* STATS TAB */
 .stats-tab {
   display: flex;
   flex-direction: column;
@@ -1035,12 +1030,8 @@ onMounted(async () => {
   gap: 20px;
 }
 
-/* ===== RESPONSIVE ===== */
+/* RESPONSIVE */
 @media (max-width: 768px) {
-  .sidebar {
-    transform: translateX(-100%);
-  }
-
   .main-content {
     margin-left: 0;
     width: 100%;
@@ -1063,7 +1054,6 @@ onMounted(async () => {
 
   .tabs-container {
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
   }
 
   .tab-button {
@@ -1079,123 +1069,12 @@ onMounted(async () => {
     width: 100%;
   }
 
-  .filter-btn {
-    flex: 1;
-  }
-
   .alert-card {
     flex-direction: column;
-  }
-
-  .alert-header {
-    flex-direction: column;
-    align-items: flex-start;
   }
 
   .stats-summary-grid {
     grid-template-columns: 1fr;
   }
-}
-
-/* ✅ ACTUALIZAR CLASES DE SEVERITY */
-.alert-card.severity-critical {
-  background: #FFF5F5;
-  border-left-color: #C13515;
-}
-
-.alert-card.severity-high {
-  background: #FFF8E1;
-  border-left-color: #FFA500;
-}
-
-.alert-card.severity-medium {
-  background: #FFF8E1;
-  border-left-color: #FFCD18;
-}
-
-.alert-card.severity-low {
-  background: #F0F9FF;
-  border-left-color: #0066CC;
-}
-
-.severity-critical .alert-icon {
-  background: white;
-  color: #C13515;
-}
-
-.severity-high .alert-icon {
-  background: white;
-  color: #FFA500;
-}
-
-.severity-medium .alert-icon {
-  background: white;
-  color: #FFCD18;
-}
-
-.severity-low .alert-icon {
-  background: white;
-  color: #0066CC;
-}
-
-/* ✅ Clases de severity actualizadas */
-.alert-card.severity-critical {
-  background: #FFF5F5;
-  border-left-color: #C13515;
-}
-
-.alert-card.severity-high {
-  background: #FFF8E1;
-  border-left-color: #FFA500;
-}
-
-.alert-card.severity-medium {
-  background: #FFFBEB;
-  border-left-color: #FFCD18;
-}
-
-.alert-card.severity-low {
-  background: #F0F9FF;
-  border-left-color: #0066CC;
-}
-
-.alert-icon.icon-critical {
-  background: #FFE8E8;
-  color: #C13515;
-}
-
-.alert-icon.icon-high {
-  background: #FFF8E1;
-  color: #FFA500;
-}
-
-.alert-icon.icon-medium {
-  background: #FFFBEB;
-  color: #FFCD18;
-}
-
-.alert-icon.icon-low {
-  background: #E3F2FD;
-  color: #0066CC;
-}
-
-.alert-type-badge.badge-critical {
-  background: #FFE8E8;
-  color: #C13515;
-}
-
-.alert-type-badge.badge-high {
-  background: #FFF8E1;
-  color: #FFA500;
-}
-
-.alert-type-badge.badge-medium {
-  background: #FFFBEB;
-  color: #FFCD18;
-}
-
-.alert-type-badge.badge-low {
-  background: #E3F2FD;
-  color: #0066CC;
 }
 </style>
