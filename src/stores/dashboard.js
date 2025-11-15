@@ -161,7 +161,7 @@ function generateMockDriversAlignedWithBackend() {
   ]
 
   const statuses = ['active', 'resting', 'offline']
-  const statusWeights = [0.60, 0.25, 0.15] // 60% activo, 25% descansando, 15% offline
+  const statusWeights = [0.60, 0.25, 0.15]
 
   const getWeightedStatus = () => {
     const random = Math.random()
@@ -174,7 +174,6 @@ function generateMockDriversAlignedWithBackend() {
   }
 
   // ✅ DISTRIBUCIÓN EQUILIBRADA DE SEVERITY
-  // 2 Critical, 3 High, 3 Medium, 2 Low, 2 Safe (sin alertas)
   const severityDistribution = [
     'Critical', 'Critical',
     'High', 'High', 'High',
@@ -190,6 +189,7 @@ function generateMockDriversAlignedWithBackend() {
     const hasActiveTrip = status === 'active'
     const assignedSeverity = shuffled[index]
 
+    // ✅ DEFINIR ALERTAS SEGÚN SEVERITY
     let randomAlerts = 0
     let randomFatigue = 0
 
@@ -204,7 +204,7 @@ function generateMockDriversAlignedWithBackend() {
           randomFatigue = Math.floor(Math.random() * 20) + 60 // 60-80
           break
         case 'Medium':
-          randomAlerts = Math.floor(Math.random() * 2) + 1 // 1-2 alertas
+          randomAlerts = Math.floor(Math.random() * 2) + 2 // 2-3 alertas
           randomFatigue = Math.floor(Math.random() * 20) + 40 // 40-60
           break
         case 'Low':
@@ -221,7 +221,6 @@ function generateMockDriversAlignedWithBackend() {
       randomFatigue = 0
     }
 
-    // ✅ SOLO USAR SEVERITY
     const severity = randomAlerts === 0 ? 'Safe' : assignedSeverity
 
     const allSymptoms = ['Yawning', 'EyeClosure', 'HeadDroop', 'MicroSleep']
@@ -262,8 +261,11 @@ function generateMockDriversAlignedWithBackend() {
         lastDetection: new Date(Date.now() - Math.random() * 3600 * 1000).toISOString()
       } : null,
 
+      // ✅ ESTE ES EL NÚMERO QUE DEBE COINCIDIR CON EL DETALLE
       alerts: randomAlerts,
-      severity: severity, // ✅ SOLO SEVERITY
+      totalAlerts: randomAlerts, // ✅ AGREGADO PARA CONSISTENCIA
+
+      severity: severity,
       fatigueSymptoms: symptoms,
       lastAlert: lastAlertTime ? getRelativeTime(lastAlertTime) : null,
       lastAlertTimestamp: lastAlertTime ? new Date(lastAlertTime).getTime() : 0,

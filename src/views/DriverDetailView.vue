@@ -398,16 +398,40 @@ const monthlyAlertsData = computed(() => {
   }))
 })
 
-// Mock data generators
-const generateMockAlerts = (driverId) => {
-  const alertTypes = [
-    { title: 'Micro-sueño detectado', type: 'Fatiga', severity: 'Critical', symptoms: ['MicroSleep', 'EyeClosure'] },
-    { title: 'Parpadeo excesivo', type: 'Fatiga', severity: 'High', symptoms: ['EyeClosure'] },
-    { title: 'Bostezo detectado', type: 'Fatiga', severity: 'Medium', symptoms: ['Yawning'] },
-    { title: 'Desviación de carril', type: 'Conducción', severity: 'High', symptoms: ['HeadDroop'] },
-    { title: 'Velocidad excesiva', type: 'Conducción', severity: 'Medium', symptoms: [] },
-    { title: 'Fatiga severa detectada', type: 'Fatiga', severity: 'Critical', symptoms: ['MicroSleep', 'EyeClosure', 'HeadDroop'] }
-  ]
+// ✅ GENERAR ALERTAS BASADAS EN EL DRIVER
+const generateMockAlerts = (driver) => {
+  const numAlerts = driver.alerts || driver.totalAlerts || 0
+
+  if (numAlerts === 0) {
+    return []
+  }
+
+  // ✅ DETERMINAR SEVERITY PREDOMINANTE DEL DRIVER
+  const driverSeverity = driver.severity === 'Safe' ? 'Low' : driver.severity
+
+  // ✅ ALERTAS ALINEADAS CON EL SEVERITY DEL DRIVER
+  const alertTypesBySeverity = {
+    Critical: [
+      { title: 'Micro-sueño detectado', type: 'Fatiga', severity: 'Critical', symptoms: ['MicroSleep', 'EyeClosure'] },
+      { title: 'Fatiga severa detectada', type: 'Fatiga', severity: 'Critical', symptoms: ['MicroSleep', 'EyeClosure', 'HeadDroop'] },
+      { title: 'Pérdida de control del vehículo', type: 'Conducción', severity: 'Critical', symptoms: ['MicroSleep'] }
+    ],
+    High: [
+      { title: 'Parpadeo excesivo', type: 'Fatiga', severity: 'High', symptoms: ['EyeClosure'] },
+      { title: 'Desviación de carril', type: 'Conducción', severity: 'High', symptoms: ['HeadDroop'] },
+      { title: 'Cambio brusco de carril', type: 'Conducción', severity: 'High', symptoms: ['HeadDroop'] }
+    ],
+    Medium: [
+      { title: 'Bostezo detectado', type: 'Fatiga', severity: 'Medium', symptoms: ['Yawning'] },
+      { title: 'Velocidad excesiva', type: 'Conducción', severity: 'Medium', symptoms: [] },
+      { title: 'Distracción detectada', type: 'Conducción', severity: 'Medium', symptoms: [] }
+    ],
+    Low: [
+      { title: 'Leve reducción de atención', type: 'Fatiga', severity: 'Low', symptoms: [] },
+      { title: 'Ajuste menor de trayectoria', type: 'Conducción', severity: 'Low', symptoms: [] },
+      { title: 'Variación de velocidad', type: 'Conducción', severity: 'Low', symptoms: [] }
+    ]
+  }
 
   const locations = [
     'Km 245 - Carretera Panamericana Sur',
@@ -419,29 +443,55 @@ const generateMockAlerts = (driverId) => {
   ]
 
   const descriptions = {
-    Critical: 'Evento crítico detectado. Se requiere acción inmediata.',
-    High: 'Situación de alto riesgo. Requiere atención urgente.',
+    Critical: 'Evento crítico detectado. Se requiere acción inmediata. Detener el vehículo de forma segura.',
+    High: 'Situación de alto riesgo. Requiere atención urgente. Considere detenerse pronto.',
     Medium: 'Situación que requiere atención. Monitoreo continuo recomendado.',
-    Low: 'Evento menor registrado para análisis.'
+    Low: 'Evento menor registrado para análisis. Mantenga precaución.'
   }
 
-  return Array.from({ length: 12 }, (_, i) => {
-    const alert = alertTypes[Math.floor(Math.random() * alertTypes.length)]
-    const hoursAgo = Math.floor(Math.random() * 48)
+  // ✅ SELECCIONAR ALERTAS SEGÚN EL SEVERITY DEL DRIVER
+  const availableAlerts = alertTypesBySeverity[driverSeverity] || alertTypesBySeverity.Low
 
-    return {
-      id: `alert-${driverId}-${i}`,
+  const alerts = []
+
+  for (let i = 0; i < numAlerts; i++) {
+    // ✅ 80% de las alertas serán del mismo severity del driver, 20% de otros niveles
+    let alert
+    if (Math.random() < 0.8) {
+      // Misma severidad
+      alert = availableAlerts[Math.floor(Math.random() * availableAlerts.length)]
+    } else {
+      // Ocasionalmente una alerta de nivel diferente (pero relacionado)
+      const allAlerts = Object.values(alertTypesBySeverity).flat()
+      alert = allAlerts[Math.floor(Math.random() * allAlerts.length)]
+    }
+
+    const maxHours = 48
+    const hoursAgo = Math.floor((maxHours / numAlerts) * i) + Math.floor(Math.random() * 3)
+
+    alerts.push({
+      id: `alert-${driver.id}-${i}`,
       ...alert,
       description: descriptions[alert.severity],
       location: locations[Math.floor(Math.random() * locations.length)],
-      time: hoursAgo === 0 ? 'Hace unos minutos' : `Hace ${hoursAgo}h`,
-      timestamp: Date.now() - (hoursAgo * 60 * 60 * 1000)
-    }
-  }).sort((a, b) => b.timestamp - a.timestamp)
+      time: hoursAgo === 0 ? 'Hace unos minutos' : hoursAgo < 1 ? 'Hace menos de 1h' : `Hace ${hoursAgo}h`,
+      timestamp: Date.now() - (hoursAgo * 60 * 60 * 1000),
+      fatigueSymptoms: alert.symptoms,
+      status: 'New',
+      createdAt: new Date(Date.now() - (hoursAgo * 60 * 60 * 1000)).toISOString()
+    })
+  }
+
+  return alerts.sort((a, b) => b.timestamp - a.timestamp)
 }
 
+// ✅ GENERAR HISTORIAL DE VIAJES
 const generateMockTrips = (driverId) => {
-  const routes = ['Lima - Arequipa', 'Lima - Cusco', 'Lima - Trujillo', 'Lima - Chiclayo', 'Lima - Piura', 'Lima - Ica']
+  const routes = [
+    'Lima - Arequipa', 'Lima - Cusco', 'Lima - Trujillo',
+    'Lima - Chiclayo', 'Lima - Piura', 'Lima - Ica'
+  ]
+
   const severities = ['Low', 'Medium', 'High', 'Critical']
   const severityWeights = [0.5, 0.3, 0.15, 0.05]
 
@@ -459,7 +509,9 @@ const generateMockTrips = (driverId) => {
     const daysAgo = i * 2 + Math.floor(Math.random() * 2)
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - daysAgo)
+
     const endDate = new Date(startDate.getTime() + (Math.random() * 8 + 4) * 3600 * 1000)
+
     const severity = getWeightedSeverity()
 
     let alerts = 0
@@ -494,15 +546,19 @@ onMounted(async () => {
     if (foundDriver) {
       driver.value = {
         ...foundDriver,
-        alertHistory: generateMockAlerts(foundDriver.id),
+        alertHistory: generateMockAlerts(foundDriver),
         tripHistory: generateMockTrips(foundDriver.id)
       }
+
+      console.log(`✅ Driver cargado: ${foundDriver.name}`)
+      console.log(`✅ Alertas totales: ${foundDriver.alerts}`)
+      console.log(`✅ Alertas generadas para detalle: ${driver.value.alertHistory.length}`)
     } else {
-      console.error('Conductor no encontrado')
+      console.error('❌ Conductor no encontrado')
       router.push({ name: 'dashboard' })
     }
   } catch (error) {
-    console.error('Error al cargar conductor:', error)
+    console.error('❌ Error al cargar conductor:', error)
     router.push({ name: 'dashboard' })
   } finally {
     isLoading.value = false
