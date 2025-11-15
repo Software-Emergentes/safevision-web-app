@@ -66,8 +66,20 @@
 </template>
 
 <script setup>
+import { ALERT_SEVERITY_LABELS } from '@/utils/constants'
 
-// ✅ AGREGAR ESTA FUNCIÓN
+// ✅ Definir props primero
+const props = defineProps({
+  trip: {
+    type: Object,
+    required: true
+  }
+})
+
+// ✅ Definir emits
+const emit = defineEmits(['view-details'])
+
+// ✅ Funciones helper
 const calculateDuration = (startTime, endTime) => {
   if (!startTime) return '0h 0m'
 
@@ -81,7 +93,6 @@ const calculateDuration = (startTime, endTime) => {
   return `${hours}h ${minutes}m`
 }
 
-// Métodos de formateo
 const formatDate = (date) => {
   if (!date) return 'N/A'
   const d = new Date(date)
@@ -98,13 +109,9 @@ const formatFullDate = (date) => {
   })
 }
 
-import {ALERT_SEVERITY_LABELS } from '@/utils/constants'  // ✅ AGREGAR
-
 const getStatusText = (status) => {
-  // ✅ Mapear severity del DB a texto español
   return ALERT_SEVERITY_LABELS[status] || status
 }
-
 </script>
 
 <style scoped>
