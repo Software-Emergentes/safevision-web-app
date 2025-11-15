@@ -33,12 +33,11 @@
           <th>Alertas Totales</th>
           <th>Índice de Riesgo</th>
           <th>Conductores</th>
-          <th>Acciones</th>
         </tr>
         </thead>
         <tbody>
         <tr v-if="filteredRoutes.length === 0">
-          <td colspan="7" class="empty-row">
+          <td colspan="6" class="empty-row">
             <div class="empty-state">
               <p>No se encontraron rutas</p>
             </div>
@@ -103,15 +102,6 @@
                 </span>
             </div>
           </td>
-          <td>
-            <button class="action-btn" @click.stop="handleViewDetails(route)">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                <circle cx="12" cy="12" r="3"></circle>
-              </svg>
-              Ver
-            </button>
-          </td>
         </tr>
         </tbody>
       </table>
@@ -150,18 +140,21 @@ const routes = computed(() => {
         trips: 0,
         totalAlerts: 0,
         drivers: [],
-        durations: [] // ✅ Para calcular promedio
+        durations: []
       }
     }
 
-    routesMap[routeName].trips += 1
+    // ✅ Contar solo viajes activos
+    if (driver.currentTrip) {
+      routesMap[routeName].trips += 1
+    }
+
     routesMap[routeName].totalAlerts += driver.alerts
     routesMap[routeName].drivers.push({
       name: driver.name,
       avatar: driver.avatar
     })
 
-    // ✅ Calcular duración del viaje actual
     if (driver.currentTrip?.startTime) {
       const start = new Date(driver.currentTrip.startTime)
       const now = new Date()
@@ -173,25 +166,23 @@ const routes = computed(() => {
 
   // ✅ Calcular promedios y formatear
   return Object.values(routesMap).map(route => {
-    // Promedio de duración
     const avgHours = route.durations.length > 0
       ? Math.floor(route.durations.reduce((a, b) => a + b, 0) / route.durations.length)
       : 0
 
     const avgMinutes = Math.floor(Math.random() * 60)
 
-    // ✅ Índice de riesgo basado en alertas promedio
     const avgAlertsPerDriver = route.drivers.length > 0
       ? route.totalAlerts / route.drivers.length
       : 0
 
     let riskIndex = 0
-    if (avgAlertsPerDriver >= 15) {
-      riskIndex = Math.min(100, Math.floor(avgAlertsPerDriver * 5))
-    } else if (avgAlertsPerDriver >= 8) {
-      riskIndex = Math.floor(avgAlertsPerDriver * 4)
+    if (avgAlertsPerDriver >= 5) {
+      riskIndex = Math.min(100, Math.floor(avgAlertsPerDriver * 10))
+    } else if (avgAlertsPerDriver >= 3) {
+      riskIndex = Math.floor(avgAlertsPerDriver * 8)
     } else {
-      riskIndex = Math.floor(avgAlertsPerDriver * 3)
+      riskIndex = Math.floor(avgAlertsPerDriver * 5)
     }
 
     return {
@@ -252,9 +243,6 @@ const handleRowClick = (route) => {
   emit('row-click', route)
 }
 
-const handleViewDetails = (route) => {
-  emit('view-details', route)
-}
 </script>
 
 <style scoped>
@@ -506,27 +494,6 @@ const handleViewDetails = (route) => {
   font-size: 10px;
   font-weight: 600;
   color: #74788D;
-}
-
-.action-btn {
-  padding: 6px 12px;
-  background: #C13515;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.3s ease;
-}
-
-.action-btn:hover {
-  background: #A72E12;
-  transform: translateY(-2px);
 }
 
 .empty-row {
