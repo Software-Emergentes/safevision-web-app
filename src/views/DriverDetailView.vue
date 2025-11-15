@@ -58,9 +58,9 @@
 
             <!-- Quick Stats -->
             <div class="quick-stats">
-              <div class="stat-item" :class="`alert-${driver.alertLevel}`">
+              <div class="stat-item" :class="getStatClass(driver.severity)">
                 <span class="stat-label">Nivel de Alerta</span>
-                <span class="stat-value">{{ getAlertLevelText(driver.alertLevel) }}</span>
+                <span class="stat-value">{{ getSeverityLabel(driver.severity) }}</span>
               </div>
               <div class="stat-item" v-if="driver.currentTrip">
                 <span class="stat-label">Tiempo en Ruta</span>
@@ -258,6 +258,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useDashboardStore } from '@/stores/dashboard'
 import { ALERT_SEVERITY } from '@/utils/constants'  // ✅ AGREGAR AL TOP
 import api from '@/services/api'
+import { getRelativeTime } from '@/utils/helpers.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -354,15 +355,6 @@ const getStatusText = (status) => {
   return statusMap[status] || status
 }
 
-const getAlertLevelText = (level) => {
-  const levelMap = {
-    safe: 'Seguro',
-    warning: 'Advertencia',
-    critical: 'Crítico'
-  }
-  return levelMap[level] || level
-}
-
 const getAlertIcon = (severity) => {
   const icons = {
     Critical: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>',
@@ -427,29 +419,37 @@ const fetchDriverData = async (driverId) => {
 }
 
 const generateMockAlerts = (driverId) => {
+  // ✅ OBTENER DATOS DEL CONDUCTOR ACTUAL
+  const currentDriver = dashboardStore.drivers.find(d => d.id === parseInt(driverId))
+  const totalAlerts = currentDriver?.alerts || 0
+
+  if (totalAlerts === 0) {
+    return [] // ✅ Sin alertas
+  }
+
   const alertTypes = [
     {
       title: 'Micro-sueño detectado',
       type: 'Fatiga',
-      severity: 'Critical',  // ✅ USAR SEVERITY DEL DB
-      symptoms: ['MicroSleep', 'EyeClosure']  // ✅ AGREGAR SYMPTOMS
+      severity: 'Critical',
+      symptoms: ['MicroSleep', 'EyeClosure']
     },
     {
       title: 'Parpadeo excesivo',
       type: 'Fatiga',
-      severity: 'High',  // ✅ CAMBIADO de 'warning'
+      severity: 'High',
       symptoms: ['EyeClosure']
     },
     {
       title: 'Bostezo detectado',
       type: 'Fatiga',
-      severity: 'Medium',  // ✅ CAMBIADO de 'info'
+      severity: 'Medium',
       symptoms: ['Yawning']
     },
     {
       title: 'Desviación de carril',
       type: 'Conducción',
-      severity: 'High',  // ✅ CAMBIADO de 'warning'
+      severity: 'High',
       symptoms: ['HeadDroop']
     },
     {
@@ -459,10 +459,16 @@ const generateMockAlerts = (driverId) => {
       symptoms: []
     },
     {
-      title: 'Fatiga severa detectada',
+      title: 'Fatiga leve detectada',
       type: 'Fatiga',
-      severity: 'Critical',
-      symptoms: ['MicroSleep', 'EyeClosure', 'HeadDroop']
+      severity: 'Low', // ✅ AGREGAR ALERTAS LEVES
+      symptoms: ['Yawning']
+    },
+    {
+      title: 'Distracción momentánea',
+      type: 'Conducción',
+      severity: 'Low', // ✅ AGREGAR ALERTAS LEVES
+      symptoms: []
     }
   ]
 
@@ -475,7 +481,6 @@ const generateMockAlerts = (driverId) => {
     'Km 410 - Ruta Interoceánica'
   ]
 
-  // ✅ DESCRIPCIONES BASADAS EN SEVERITY DEL DB
   const descriptions = {
     Critical: 'Evento crítico detectado. Se requiere acción inmediata. Detener el vehículo de forma segura.',
     High: 'Situación de alto riesgo. Requiere atención urgente. Considere detenerse pronto.',
@@ -483,24 +488,28 @@ const generateMockAlerts = (driverId) => {
     Low: 'Evento menor registrado para análisis. Mantenga precaución.'
   }
 
-  return Array.from({ length: 12 }, (_, i) => {
+  // ✅ Generar exactamente totalAlerts alertas
+  return Array.from({ length: totalAlerts }, (_, i) => {
     const alert = alertTypes[Math.floor(Math.random() * alertTypes.length)]
-    const hoursAgo = Math.floor(Math.random() * 48)
+
+    // ✅ Tiempo realista: 5 min - 6 horas atrás
+    const minMinutes = 5
+    const maxMinutes = 360
+    const randomMinutes = Math.floor(Math.random() * (maxMinutes - minMinutes + 1)) + minMinutes
+    const alertTime = Date.now() - (randomMinutes * 60 * 1000)
 
     return {
       id: `alert-${driverId}-${i}`,
       ...alert,
       description: descriptions[alert.severity],
       location: locations[Math.floor(Math.random() * locations.length)],
-      time: hoursAgo === 0 ? 'Hace unos minutos' : `Hace ${hoursAgo}h`,
-      timestamp: Date.now() - (hoursAgo * 60 * 60 * 1000),
-
-      // ✅ NUEVO: Campos según DB
+      time: getRelativeTime(new Date(alertTime).toISOString()),
+      timestamp: alertTime,
       fatigueSymptoms: alert.symptoms,
-      status: 'New',  // ✅ Según DB: New, Reviewed, FalsePositive
-      createdAt: new Date(Date.now() - (hoursAgo * 60 * 60 * 1000)).toISOString()
+      status: 'New',
+      createdAt: new Date(alertTime).toISOString()
     }
-  }).sort((a, b) => b.timestamp - a.timestamp)
+  }).sort((a, b) => b.timestamp - a.timestamp) // ✅ Más reciente primero
 }
 
 const generateMockTrips = (driverId) => {
@@ -509,9 +518,8 @@ const generateMockTrips = (driverId) => {
     'Lima - Chiclayo', 'Lima - Piura', 'Lima - Ica'
   ]
 
-  // ✅ USAR SEVERITY DEL DB
   const severities = ['Low', 'Medium', 'High', 'Critical']
-  const severityWeights = [0.5, 0.3, 0.15, 0.05] // 50% Low, 30% Medium, 15% High, 5% Critical
+  const severityWeights = [0.6, 0.25, 0.12, 0.03] // ✅ 60% Low, 25% Medium, 12% High, 3% Critical
 
   const getWeightedSeverity = () => {
     const random = Math.random()
@@ -532,12 +540,12 @@ const generateMockTrips = (driverId) => {
 
     const severity = getWeightedSeverity()
 
-    // ✅ Alertas basadas en severity
+    // ✅ Alertas basadas en severity (0-6)
     let alerts = 0
-    if (severity === 'Critical') alerts = Math.floor(Math.random() * 8) + 10
-    else if (severity === 'High') alerts = Math.floor(Math.random() * 5) + 5
-    else if (severity === 'Medium') alerts = Math.floor(Math.random() * 5) + 2
-    else alerts = Math.floor(Math.random() * 2)
+    if (severity === 'Critical') alerts = Math.floor(Math.random() * 2) + 5 // 5-6
+    else if (severity === 'High') alerts = Math.floor(Math.random() * 2) + 3 // 3-4
+    else if (severity === 'Medium') alerts = Math.floor(Math.random() * 2) + 1 // 1-2
+    else alerts = 0 // Low = 0 alertas
 
     return {
       id: `trip-${driverId}-${i}`,
@@ -545,10 +553,32 @@ const generateMockTrips = (driverId) => {
       startTime: startDate.toISOString(),
       endTime: endDate.toISOString(),
       alerts,
-      status: severity,  // ✅ Usar severity del DB
+      status: severity,
       timestamp: startDate.getTime()
     }
   }).sort((a, b) => b.timestamp - a.timestamp)
+}
+
+const getSeverityLabel = (severity) => {
+  const labels = {
+    'Critical': 'Crítico',
+    'High': 'Alto',
+    'Medium': 'Moderado',
+    'Low': 'Leve',
+    'Safe': 'Seguro'
+  }
+  return labels[severity] || severity
+}
+
+const getStatClass = (severity) => {
+  const classMap = {
+    'Critical': 'alert-critical',
+    'High': 'alert-high',
+    'Medium': 'alert-medium',
+    'Low': 'alert-low',
+    'Safe': 'alert-safe'
+  }
+  return classMap[severity] || 'alert-safe'
 }
 
 onMounted(async () => {
