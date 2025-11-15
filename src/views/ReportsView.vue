@@ -13,15 +13,20 @@
         </div>
 
         <div class="header-right">
-          <button class="export-btn" @click="handleExport">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
-                 viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2">
+          <button
+            class="export-btn"
+            @click="handleExport"
+            :disabled="isLoadingReports"
+          >
+            <svg v-if="!isLoadingReports" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
               <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
-            Exportar PDF
+
+            <div v-else class="spinner-small"></div>
+
+            {{ isLoadingReports ? 'Generando...' : 'Exportar PDF' }}
           </button>
         </div>
 
@@ -89,7 +94,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useDashboardStore } from '@/stores/dashboard'
-import api from '@/services/api' // ✅ AGREGADO
+// import api from '@/services/api' // ✅ AGREGADO
 import ReportStatCard from '@/components/reports/ReportStatCard.vue'
 import AlertsWeeklyChart from '@/components/reports/AlertsWeeklyChart.vue'
 import AlertsDistributionCard from '@/components/reports/AlertsDistributionCard.vue'
@@ -239,36 +244,270 @@ const driversReportData = computed(() => {
 // Datos de horarios (MOCK)
 const scheduleData = ref([])
 
-// ✅ Función para exportar reportes (con API real)
 const handleExport = async () => {
   try {
     isLoadingReports.value = true
 
-    // ✅ Llamada real al backend
-    const blob = await api.management.exportReport({
-      type: 'pdf',
-      dateRange: {
-        start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-        end: new Date().toISOString()
+    // ✅ IMPORTACIÓN CORRECTA
+    const jsPDF = (await import('jspdf')).default
+    const autoTable = (await import('jspdf-autotable')).default
+
+    // ✅ Crear documento PDF
+    const doc = new jsPDF()
+
+    // ✅ Configuración
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+    let yPos = 20
+
+    // ===== HEADER =====
+    doc.setFillColor(193, 53, 21)
+    doc.rect(0, 0, pageWidth, 40, 'F')
+
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(24)
+    doc.setFont('helvetica', 'bold')
+    doc.text('SafeVision', 20, 20)
+
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Reporte de Monitoreo de Flota', 20, 30)
+
+    yPos = 50
+
+    // ===== FECHA =====
+    doc.setTextColor(0, 0, 0)
+    doc.setFontSize(10)
+    const today = new Date().toLocaleDateString('es-PE', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+    doc.text(`Generado: ${today}`, pageWidth - 80, yPos)
+
+    yPos += 15
+
+    // ===== ESTADÍSTICAS PRINCIPALES =====
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(193, 53, 21)
+    doc.text('Resumen Ejecutivo', 20, yPos)
+
+    yPos += 10
+
+    const statsData = [
+      ['Total Conductores', String(mainStats.value[0].value), mainStats.value[0].trend],
+      ['Viajes Completados', String(mainStats.value[1].value), mainStats.value[1].trend],
+      ['Tasa de Seguridad', String(mainStats.value[2].value), mainStats.value[2].trend],
+      ['Total Alertas', String(mainStats.value[3].value), mainStats.value[3].trend]
+    ]
+
+    // ✅ USAR autoTable correctamente
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Métrica', 'Valor', 'Tendencia']],
+      body: statsData,
+      theme: 'striped',
+      headStyles: {
+        fillColor: [193, 53, 21],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 11
       },
-      includeDrivers: true,
-      includeAlerts: true
+      styles: {
+        fontSize: 10,
+        cellPadding: 5
+      },
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 60 },
+        1: { halign: 'center', cellWidth: 40 },
+        2: { fontSize: 9, cellWidth: 'auto' }
+      }
     })
 
-    // Crear enlace de descarga
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', `reporte-safevision-${new Date().toISOString().split('T')[0]}.pdf`)
-    document.body.appendChild(link)
-    link.click()
-    link.parentNode.removeChild(link)
+    yPos = doc.lastAutoTable.finalY + 15
 
-    console.log('Reporte exportado exitosamente')
+    // ===== DISTRIBUCIÓN DE ALERTAS =====
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(193, 53, 21)
+    doc.text('Distribución de Alertas', 20, yPos)
+
+    yPos += 10
+
+    const alertsDistData = alertsDistribution.value.map(item => [
+      item.label,
+      String(item.value),
+      `${item.percentage}%`
+    ])
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Tipo de Alerta', 'Cantidad', 'Porcentaje']],
+      body: alertsDistData,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [193, 53, 21],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold'
+      },
+      styles: {
+        fontSize: 10,
+        cellPadding: 5
+      },
+      columnStyles: {
+        0: { cellWidth: 80 },
+        1: { halign: 'center', cellWidth: 40 },
+        2: { halign: 'center', cellWidth: 40 }
+      }
+    })
+
+    yPos = doc.lastAutoTable.finalY + 15
+
+    // ===== ALERTAS POR SEMANA (GRÁFICO DE TEXTO) =====
+    if (yPos > pageHeight - 60) {
+      doc.addPage()
+      yPos = 20
+    }
+
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(193, 53, 21)
+    doc.text('Alertas por Semana', 20, yPos)
+
+    yPos += 10
+
+    const weeklyData = weeklyAlertsData.value.map(item => [
+      item.label,
+      String(item.value)
+    ])
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Semana', 'Alertas']],
+      body: weeklyData,
+      theme: 'striped',
+      headStyles: {
+        fillColor: [193, 53, 21],
+        textColor: [255, 255, 255]
+      },
+      columnStyles: {
+        0: { cellWidth: 100 },
+        1: { halign: 'center', cellWidth: 60 }
+      }
+    })
+
+    // ===== NUEVA PÁGINA: CONDUCTORES =====
+    doc.addPage()
+    yPos = 20
+
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(193, 53, 21)
+    doc.text('Reporte Detallado por Conductor', 20, yPos)
+
+    yPos += 10
+
+    const driversData = driversReportData.value.map(driver => [
+      driver.name,
+      driver.vehicle,
+      String(driver.trips),
+      String(driver.alerts),
+      `${driver.safetyRate}%`,
+      driver.status === 'active' ? 'Activo' :
+        driver.status === 'resting' ? 'Descansando' : 'Desconectado'
+    ])
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Conductor', 'Vehículo', 'Viajes', 'Alertas', 'Seguridad', 'Estado']],
+      body: driversData,
+      theme: 'striped',
+      headStyles: {
+        fillColor: [193, 53, 21],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 10
+      },
+      styles: {
+        fontSize: 9,
+        cellPadding: 4
+      },
+      columnStyles: {
+        0: { cellWidth: 45 },
+        1: { cellWidth: 30, halign: 'center' },
+        2: { cellWidth: 20, halign: 'center' },
+        3: { cellWidth: 20, halign: 'center' },
+        4: { cellWidth: 25, halign: 'center' },
+        5: { cellWidth: 30, halign: 'center' }
+      },
+      didParseCell: function(data) {
+        if (data.column.index === 3 && data.section === 'body') {
+          const alertsText = data.cell.text[0]
+          const alerts = parseInt(alertsText)
+          if (!isNaN(alerts)) {
+            if (alerts > 15) {
+              data.cell.styles.textColor = [193, 53, 21]
+              data.cell.styles.fontStyle = 'bold'
+            } else if (alerts > 5) {
+              data.cell.styles.textColor = [255, 165, 0]
+            }
+          }
+        }
+        if (data.column.index === 4 && data.section === 'body') {
+          const rateText = data.cell.text[0]
+          const rate = parseInt(rateText)
+          if (!isNaN(rate)) {
+            if (rate >= 85) {
+              data.cell.styles.textColor = [0, 202, 117]
+              data.cell.styles.fontStyle = 'bold'
+            } else if (rate < 70) {
+              data.cell.styles.textColor = [193, 53, 21]
+              data.cell.styles.fontStyle = 'bold'
+            }
+          }
+        }
+      }
+    })
+
+    // ===== FOOTER EN TODAS LAS PÁGINAS =====
+    const totalPages = doc.internal.getNumberOfPages()
+
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i)
+
+      doc.setDrawColor(193, 53, 21)
+      doc.setLineWidth(0.5)
+      doc.line(20, pageHeight - 20, pageWidth - 20, pageHeight - 20)
+
+      doc.setFontSize(8)
+      doc.setTextColor(128, 128, 128)
+      doc.setFont('helvetica', 'normal')
+
+      doc.text(
+        'SafeVision - Sistema de Monitoreo de Conductores',
+        20,
+        pageHeight - 12
+      )
+
+      doc.text(
+        `Página ${i} de ${totalPages}`,
+        pageWidth - 40,
+        pageHeight - 12
+      )
+    }
+
+    // ===== GUARDAR PDF =====
+    const fileName = `SafeVision_Reporte_${new Date().toISOString().split('T')[0]}.pdf`
+    doc.save(fileName)
+
+    console.log('✅ PDF generado exitosamente:', fileName)
 
   } catch (error) {
-    console.error('Error al exportar reporte:', error)
-    alert('Error al exportar el reporte. Por favor intenta de nuevo.')
+    console.error('❌ Error al exportar reporte:', error)
+    alert('Error al generar el PDF. Por favor intenta de nuevo.')
   } finally {
     isLoadingReports.value = false
   }
@@ -503,5 +742,23 @@ onMounted(async () => {
   .page-title {
     font-size: 24px;
   }
+}
+
+.export-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.spinner-small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>
