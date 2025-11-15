@@ -1,28 +1,28 @@
 <template>
-  <div class="alerts-weekly-chart">
-    <div class="chart-header">
-      <h3 class="chart-title">Alertas por Semana</h3>
+  <div class="bg-white rounded-xl p-6 shadow-sm h-full flex flex-col">
+    <div class="mb-6">
+      <h3 class="text-lg font-semibold text-gray-900 m-0">Alertas por Semana</h3>
     </div>
 
-    <div class="chart-content">
-      <div class="chart-bars">
+    <div class="flex-1 flex items-end min-h-[300px]">
+      <div class="w-full flex justify-around items-end h-[280px] gap-5 px-4">
         <div
           v-for="(item, index) in data"
           :key="index"
-          class="bar-group"
+          class="flex-1 flex flex-col items-center gap-3"
         >
-          <div class="bar-container">
+          <div class="w-full max-w-[80px] h-[240px] flex items-end relative">
             <div
-              class="bar"
               :style="{
                 height: `${calculateBarHeight(item.value)}%`,
                 background: getBarColor(item.value)
               }"
+              class="w-full rounded-t-lg relative transition-all duration-300 cursor-pointer hover:opacity-80 hover:-translate-y-1 min-h-[30px] flex items-start justify-center pt-2"
             >
-              <span class="bar-value">{{ item.value }}</span>
+              <span class="text-sm font-bold text-white drop-shadow-md">{{ item.value }}</span>
             </div>
           </div>
-          <span class="bar-label">{{ item.label }}</span>
+          <span class="text-[13px] text-gray-500 font-medium text-center">{{ item.label }}</span>
         </div>
       </div>
     </div>
@@ -33,11 +33,7 @@
 import { computed } from 'vue'
 
 const props = defineProps({
-  data: {
-    type: Array,
-    required: true,
-    default: () => []
-  }
+  data: { type: Array, required: true, default: () => [] }
 })
 
 const maxValue = computed(() => {
@@ -50,121 +46,11 @@ const calculateBarHeight = (value) => {
 }
 
 const getBarColor = (value) => {
-  const max = maxValue.value || 1
-  const percentage = (value / max) * 100
+  const percentage = (value / maxValue.value) * 100
 
   if (percentage >= 80) return 'linear-gradient(180deg, #8B5CF6 0%, #6D28D9 100%)'
   if (percentage >= 50) return 'linear-gradient(180deg, #A78BFA 0%, #8B5CF6 100%)'
 
   return 'linear-gradient(180deg, #E9D5FF 0%, #D8B4FE 100%)'
 }
-
 </script>
-
-<style scoped>
-.alerts-weekly-chart {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.chart-header {
-  margin-bottom: 24px;
-}
-
-.chart-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #222222;
-  margin: 0;
-}
-
-.chart-content {
-  flex: 1;
-  display: flex;
-  align-items: flex-end;
-  min-height: 300px;
-}
-
-.chart-bars {
-  width: 100%;
-  display: flex;
-  justify-content: space-around;
-  align-items: flex-end;
-  height: 280px;
-  gap: 20px;
-  padding: 0 16px;
-}
-
-.bar-group {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-
-.bar-container {
-  width: 100%;
-  max-width: 80px;
-  height: 240px;
-  display: flex;
-  align-items: flex-end;
-  position: relative;
-}
-
-.bar {
-  width: 100%;
-  border-radius: 8px 8px 0 0;
-  position: relative;
-  transition: all 0.3s ease;
-  cursor: pointer;
-  min-height: 30px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding-top: 8px;
-}
-
-.bar:hover {
-  opacity: 0.8;
-  transform: translateY(-4px);
-}
-
-.bar-value {
-  font-size: 14px;
-  font-weight: 700;
-  color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-.bar-label {
-  font-size: 13px;
-  color: #74788D;
-  font-weight: 500;
-  text-align: center;
-}
-
-@media (max-width: 768px) {
-  .chart-bars {
-    gap: 12px;
-    padding: 0 8px;
-  }
-
-  .bar-container {
-    max-width: 60px;
-  }
-
-  .bar-value {
-    font-size: 12px;
-  }
-
-  .bar-label {
-    font-size: 11px;
-  }
-}
-</style>

@@ -1,12 +1,17 @@
 <template>
-  <div class="stat-card" :class="variant">
-    <div class="stat-icon">
+  <div class="bg-white rounded-xl p-6 flex gap-5 items-start shadow-sm transition-all duration-300 border border-gray-200 hover:-translate-y-1 hover:shadow-lg">
+    <div
+      :class="[
+        'w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 text-2xl',
+        iconClasses[variant]
+      ]"
+    >
       <slot name="icon"></slot>
     </div>
-    <div class="stat-content">
-      <p class="stat-label">{{ label }}</p>
-      <p class="stat-value">{{ value }}</p>
-      <p v-if="subtitle" class="stat-subtitle">{{ subtitle }}</p>
+    <div class="flex-1 flex flex-col gap-1">
+      <p class="text-sm text-gray-500 font-medium m-0">{{ label }}</p>
+      <p class="text-[32px] font-bold text-gray-900 m-0 leading-tight">{{ value }}</p>
+      <p v-if="subtitle" class="text-[13px] text-gray-500 m-0">{{ subtitle }}</p>
     </div>
   </div>
 </template>
@@ -27,86 +32,15 @@ defineProps({
   },
   variant: {
     type: String,
-    default: 'default', // 'default', 'danger', 'warning', 'success'
+    default: 'default',
     validator: (value) => ['default', 'danger', 'warning', 'success'].includes(value)
   }
 })
+
+const iconClasses = {
+  default: 'bg-gradient-to-br from-purple-500 to-purple-700 text-white',
+  danger: 'bg-gradient-to-br from-primary to-primary-dark text-white',
+  warning: 'bg-gradient-to-br from-warning to-orange-500 text-white',
+  success: 'bg-gradient-to-br from-success to-green-700 text-white'
+}
 </script>
-
-<style scoped>
-.stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  display: flex;
-  gap: 20px;
-  align-items: flex-start;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-  border: 1px solid #E9ECEF;
-}
-
-.stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
-}
-
-.stat-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  font-size: 24px;
-}
-
-.stat-card.default .stat-icon {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.stat-card.danger .stat-icon {
-  background: linear-gradient(135deg, #C13515 0%, #8B2810 100%);
-  color: white;
-}
-
-.stat-card.warning .stat-icon {
-  background: linear-gradient(135deg, #FFCD18 0%, #FFA500 100%);
-  color: white;
-}
-
-.stat-card.success .stat-icon {
-  background: linear-gradient(135deg, #00CA75 0%, #00A060 100%);
-  color: white;
-}
-
-.stat-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: #74788D;
-  font-weight: 500;
-  margin: 0;
-}
-
-.stat-value {
-  font-size: 32px;
-  font-weight: 700;
-  color: #222222;
-  margin: 0;
-  line-height: 1.2;
-}
-
-.stat-subtitle {
-  font-size: 13px;
-  color: #74788D;
-  margin: 0;
-}
-</style>

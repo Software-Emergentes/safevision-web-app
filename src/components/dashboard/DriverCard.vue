@@ -1,53 +1,61 @@
 <template>
   <div
-    class="driver-card"
-    :class="getSeverityClass(driver.severity)"
+    :class="[
+      'bg-white rounded-xl p-5 shadow-sm transition-all duration-300 cursor-pointer border-l-4',
+      'hover:-translate-y-1 hover:shadow-xl',
+      borderColors[driver.severity] || borderColors['Safe']
+    ]"
     @click="handleClick"
   >
-    <div class="driver-header">
-      <div class="driver-avatar">
-        <img :src="driver.avatar" :alt="driver.name" />
-        <span class="status-indicator" :class="driver.status"></span>
+    <!-- Header -->
+    <div class="flex items-center gap-4 mb-4">
+      <div class="relative w-14 h-14 flex-shrink-0">
+        <img :src="driver.avatar" :alt="driver.name" class="w-full h-full rounded-full object-cover" />
+        <span :class="['absolute bottom-0.5 right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white', statusColors[driver.status]]"></span>
       </div>
 
-      <div class="driver-info">
-        <h3 class="driver-name">{{ driver.name }}</h3>
-        <p class="driver-vehicle">🚌 {{ driver.vehicle?.plate || 'N/A' }}</p>
+      <div class="flex-1 min-w-0">
+        <h3 class="text-base font-semibold text-gray-900 m-0 truncate">{{ driver.name }}</h3>
+        <p class="text-sm text-gray-500 m-0">🚌 {{ driver.vehicle?.plate || 'N/A' }}</p>
       </div>
 
-      <div v-if="driver.alerts === 0" class="alert-badge severity-safe">
-        <span class="alert-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-          </svg>
-        </span>
+      <div
+        v-if="driver.alerts === 0"
+        class="w-10 h-10 rounded-[10px] flex items-center justify-center bg-green-50 text-success"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
       </div>
-      <div v-else class="alert-badge" :class="getSeverityClass(driver.severity)">
-        <span class="alert-icon" v-html="getSeverityIcon(driver.severity)"></span>
+      <div
+        v-else
+        :class="['w-10 h-10 rounded-[10px] flex items-center justify-center text-xl flex-shrink-0', badgeColors[driver.severity] || badgeColors['Safe']]"
+      >
+        <span class="flex items-center justify-center" v-html="getSeverityIcon(driver.severity)"></span>
       </div>
     </div>
 
-    <div class="driver-details">
-      <div class="detail-item">
-        <span class="detail-label">Ruta</span>
-        <span class="detail-value">{{ driver.currentTrip?.route || 'Sin ruta activa' }}</span>
+    <!-- Details -->
+    <div class="grid grid-cols-2 gap-3 mb-4 py-4 border-t border-b border-gray-200">
+      <div class="flex flex-col gap-1">
+        <span class="text-xs text-gray-500 font-medium">Ruta</span>
+        <span class="text-sm text-gray-900 font-semibold">{{ driver.currentTrip?.route || 'Sin ruta activa' }}</span>
       </div>
-
-      <div class="detail-item">
-        <span class="detail-label">Licencia</span>
-        <span class="detail-value">{{ driver.licenseNumber || 'N/A' }}</span>
+      <div class="flex flex-col gap-1">
+        <span class="text-xs text-gray-500 font-medium">Licencia</span>
+        <span class="text-sm text-gray-900 font-semibold">{{ driver.licenseNumber || 'N/A' }}</span>
       </div>
-
-      <div class="detail-item" v-if="driver.currentTrip">
-        <span class="detail-label">Tiempo en ruta</span>
-        <span class="detail-value">{{ calculateTripDuration(driver.currentTrip.startTime) }}</span>
+      <div v-if="driver.currentTrip" class="flex flex-col gap-1 col-span-2">
+        <span class="text-xs text-gray-500 font-medium">Tiempo en ruta</span>
+        <span class="text-sm text-gray-900 font-semibold">{{ calculateTripDuration(driver.currentTrip.startTime) }}</span>
       </div>
     </div>
 
-    <div class="driver-footer">
-      <div class="footer-info">
-        <span v-if="driver.alerts === 0" class="no-alerts">
+    <!-- Footer -->
+    <div class="flex justify-between items-center gap-3">
+      <div class="flex flex-col gap-1 flex-1">
+        <span v-if="driver.alerts === 0" class="flex items-center gap-1.5 text-[13px] text-success font-semibold">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
             <polyline points="22 4 12 14.01 9 11.01"></polyline>
@@ -55,11 +63,16 @@
           Sin alertas
         </span>
         <template v-else>
-          <span class="alert-count">⚠️ {{ driver.alerts }} {{ driver.alerts === 1 ? 'alerta' : 'alertas' }}</span>
-          <span class="last-alert">{{ driver.lastAlert }}</span>
+          <span class="text-[13px] text-gray-900 font-semibold">⚠️ {{ driver.alerts }} {{ driver.alerts === 1 ? 'alerta' : 'alertas' }}</span>
+          <span class="text-xs text-gray-500">{{ driver.lastAlert }}</span>
         </template>
       </div>
-      <button class="view-details-btn" @click.stop="viewDetails">Ver detalles →</button>
+      <button
+        @click.stop="viewDetails"
+        class="py-2 px-4 bg-primary text-white border-none rounded-lg text-[13px] font-semibold cursor-pointer transition-all duration-300 whitespace-nowrap hover:bg-primary-dark hover:scale-105"
+      >
+        Ver detalles →
+      </button>
     </div>
   </div>
 </template>
@@ -74,15 +87,26 @@ const props = defineProps({
 const emit = defineEmits(['click', 'view-details'])
 const router = useRouter()
 
-const getSeverityClass = (severity) => {
-  const classMap = {
-    'Safe': 'severity-safe',
-    'Low': 'severity-low',
-    'Medium': 'severity-medium',
-    'High': 'severity-high',
-    'Critical': 'severity-critical'
-  }
-  return classMap[severity] || 'severity-safe'
+const borderColors = {
+  'Safe': 'border-l-success bg-gradient-to-r from-green-50 to-white',
+  'Low': 'border-l-info bg-gradient-to-r from-blue-50 to-white',
+  'Medium': 'border-l-warning bg-gradient-to-r from-yellow-50 to-white',
+  'High': 'border-l-orange-500 bg-gradient-to-r from-orange-50 to-white',
+  'Critical': 'border-l-primary bg-gradient-to-r from-red-50 to-white'
+}
+
+const badgeColors = {
+  'Safe': 'bg-green-50 text-success',
+  'Low': 'bg-blue-50 text-info',
+  'Medium': 'bg-yellow-50 text-warning',
+  'High': 'bg-orange-50 text-orange-500',
+  'Critical': 'bg-red-50 text-primary'
+}
+
+const statusColors = {
+  active: 'bg-success',
+  resting: 'bg-warning',
+  offline: 'bg-gray-500'
 }
 
 const getSeverityIcon = (severity) => {
@@ -118,242 +142,3 @@ const viewDetails = () => {
   router.push({ name: 'driver-detail', params: { id: props.driver.id } })
 }
 </script>
-
-<style scoped>
-.driver-card {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-  cursor: pointer;
-  border-left: 4px solid transparent;
-}
-
-.driver-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-}
-
-/* ✅ BORDE VERDE PARA SEGUROS (SIN ALERTAS) */
-.driver-card.alert-safe {
-  border-left-color: #00CA75;
-  background: linear-gradient(135deg, #fff 0%, #E8F8F0 100%);
-}
-
-.driver-card.alert-critical,
-.driver-card.severity-critical {
-  border-left-color: #c13515;
-  background: linear-gradient(135deg, #fff 0%, #fff5f5 100%);
-}
-
-.driver-card.alert-high,
-.driver-card.severity-high {
-  border-left-color: #ff8c00;
-  background: linear-gradient(135deg, #fff 0%, #fff8e1 100%);
-}
-
-.driver-card.alert-medium,
-.driver-card.alert-warning,
-.driver-card.severity-medium {
-  border-left-color: #ffcd18;
-  background: linear-gradient(135deg, #fff 0%, #fffbea 100%);
-}
-
-.driver-card.alert-low,
-.driver-card.severity-low {
-  border-left-color: #0066CC;
-  background: linear-gradient(135deg, #fff 0%, #f0f7ff 100%);
-}
-
-.driver-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.driver-avatar {
-  position: relative;
-  width: 56px;
-  height: 56px;
-  flex-shrink: 0;
-}
-
-.driver-avatar img {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.status-indicator {
-  position: absolute;
-  bottom: 2px;
-  right: 2px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 2px solid white;
-}
-
-.status-indicator.active {
-  background: #00ca75;
-}
-
-.status-indicator.resting {
-  background: #ffcd18;
-}
-
-.status-indicator.offline {
-  background: #74788d;
-}
-
-.driver-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.driver-name {
-  font-size: 16px;
-  font-weight: 600;
-  color: #222222;
-  margin: 0 0 4px 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.driver-vehicle {
-  font-size: 14px;
-  color: #74788d;
-  margin: 0;
-}
-
-.alert-badge {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  flex-shrink: 0;
-}
-
-/* ✅ BADGE VERDE PARA SEGUROS */
-.alert-badge.severity-safe {
-  background: #E8F8F0;
-  color: #00CA75;
-}
-
-.alert-badge.severity-low {
-  background: #f0f7ff;
-  color: #0066CC;
-}
-
-.alert-badge.severity-medium {
-  background: #fffbea;
-  color: #ffcd18;
-}
-
-.alert-badge.severity-high {
-  background: #fff8e1;
-  color: #ff8c00;
-}
-
-.alert-badge.severity-critical {
-  background: #ffe8e8;
-  color: #c13515;
-}
-
-.alert-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.driver-details {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-bottom: 16px;
-  padding: 16px 0;
-  border-top: 1px solid #e9ecef;
-  border-bottom: 1px solid #e9ecef;
-}
-
-.detail-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.detail-label {
-  font-size: 12px;
-  color: #74788d;
-  font-weight: 500;
-}
-
-.detail-value {
-  font-size: 14px;
-  color: #222222;
-  font-weight: 600;
-}
-
-.driver-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.footer-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-}
-
-.no-alerts {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: #00CA75;
-  font-weight: 600;
-}
-
-.no-alerts svg {
-  color: #00CA75;
-}
-
-.alert-count {
-  font-size: 13px;
-  color: #222222;
-  font-weight: 600;
-}
-
-.last-alert {
-  font-size: 12px;
-  color: #74788d;
-}
-
-.view-details-btn {
-  padding: 8px 16px;
-  background: #c13515;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-}
-
-.view-details-btn:hover {
-  background: #a72e12;
-  transform: scale(1.05);
-}
-</style>
