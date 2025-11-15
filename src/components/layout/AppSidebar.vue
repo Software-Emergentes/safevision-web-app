@@ -1,41 +1,53 @@
 <template>
-  <aside class="sidebar">
-    <div class="sidebar-header">
-      <div class="logo-container">
-        <div class="logo-icon">
+  <aside class="w-[280px] bg-white border-r border-gray-200 flex flex-col fixed h-screen left-0 top-0 z-[100]">
+    <!-- Header -->
+    <div class="p-8 border-b border-gray-200">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-gradient-to-br from-primary to-primary-dark rounded-[10px] flex items-center justify-center text-white">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
             <circle cx="12" cy="12" r="3"></circle>
           </svg>
         </div>
-        <h1 class="logo-title">SafeVision</h1>
+        <h1 class="text-2xl font-bold text-gray-900">SafeVision</h1>
       </div>
     </div>
 
-    <nav class="sidebar-nav">
+    <!-- Navigation -->
+    <nav class="flex-1 p-6 flex flex-col gap-2 overflow-y-auto">
       <button
         v-for="item in navigationItems"
         :key="item.path"
         @click="navigateTo(item.path)"
-        class="nav-item"
-        :class="{ active: isActiveRoute(item.path) }"
+        :class="[
+          'flex items-center gap-3 px-4 py-3 rounded-lg text-[15px] font-medium transition-all duration-300 cursor-pointer border-none bg-transparent w-full text-left',
+          isActiveRoute(item.path)
+            ? 'bg-gradient-to-r from-primary to-primary-dark text-white'
+            : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+        ]"
       >
-        <span class="nav-icon" v-html="item.icon"></span>
-        <span class="nav-label">{{ item.label }}</span>
+        <span class="flex items-center justify-center" v-html="item.icon"></span>
+        <span>{{ item.label }}</span>
       </button>
     </nav>
 
-    <div class="sidebar-footer">
-      <div class="user-profile">
-        <div class="user-avatar">
-          <span>{{ userInitials }}</span>
+    <!-- Footer -->
+    <div class="p-5 border-t border-gray-200">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-11 h-11 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center text-white font-semibold text-base">
+          {{ userInitials }}
         </div>
-        <div class="user-info">
-          <p class="user-name">{{ authStore.user?.name || 'Usuario' }}</p>
-          <p class="user-role">Gerente de Flota</p>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-semibold text-gray-900 mb-0.5 truncate">
+            {{ authStore.user?.name || 'Usuario' }}
+          </p>
+          <p class="text-xs text-gray-500 m-0">Gerente de Flota</p>
         </div>
       </div>
-      <button @click="handleLogout" class="logout-btn">
+      <button
+        @click="handleLogout"
+        class="w-full py-2.5 px-4 bg-gray-100 border border-gray-200 rounded-lg text-gray-500 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 transition-all duration-300 hover:bg-red-50 hover:border-primary hover:text-primary"
+      >
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
           <polyline points="16 17 21 12 16 7"></polyline>
@@ -82,7 +94,6 @@ const isActiveRoute = (path) => {
 }
 
 const navigateTo = (path) => {
-  console.log('🔄 Navegando a:', path)
   router.push(path).catch(err => console.error('Error al navegar:', err))
 }
 
@@ -93,164 +104,8 @@ const handleLogout = () => {
 </script>
 
 <style scoped>
-.sidebar {
-  width: 280px;
-  background: white;
-  border-right: 1px solid #E9ECEF;
-  display: flex;
-  flex-direction: column;
-  position: fixed;
-  height: 100vh;
-  left: 0;
-  top: 0;
-  z-index: 100;
-}
-
-.sidebar-header {
-  padding: 32px 24px;
-  border-bottom: 1px solid #E9ECEF;
-}
-
-.logo-container {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.logo-icon {
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, #C13515 0%, #8B2810 100%);
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-}
-
-.logo-title {
-  font-size: 24px;
-  font-weight: 700;
-  color: #222222;
-  margin: 0;
-}
-
-.sidebar-nav {
-  flex: 1;
-  padding: 24px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  overflow-y: auto;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 8px;
-  color: #74788D;
-  text-decoration: none;
-  font-size: 15px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  cursor: pointer;
-  border: none;
-  background: transparent;
-  width: 100%;
-  text-align: left;
-  font-family: inherit;
-}
-
-.nav-item:hover {
-  background: #F5F7FA;
-  color: #222222;
-}
-
-.nav-item.active {
-  background: linear-gradient(135deg, #C13515 0%, #8B2810 100%);
-  color: white;
-}
-
-.nav-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.sidebar-footer {
-  padding: 20px;
-  border-top: 1px solid #E9ECEF;
-}
-
-.user-profile {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.user-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: 600;
-  font-size: 16px;
-}
-
-.user-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.user-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #222222;
-  margin: 0 0 2px 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.user-role {
-  font-size: 12px;
-  color: #74788D;
-  margin: 0;
-}
-
-.logout-btn {
-  width: 100%;
-  padding: 10px 16px;
-  background: #F5F7FA;
-  border: 1px solid #E9ECEF;
-  border-radius: 8px;
-  color: #74788D;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: all 0.3s ease;
-}
-
-.logout-btn:hover {
-  background: #FFE8E8;
-  border-color: #C13515;
-  color: #C13515;
-}
-
 @media (max-width: 768px) {
-  .sidebar {
+  aside {
     transform: translateX(-100%);
   }
 }

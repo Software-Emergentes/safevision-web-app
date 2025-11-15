@@ -1,15 +1,31 @@
 <template>
-  <div class="dashboard-container">
+  <div class="flex min-h-screen bg-gray-100 font-sans">
     <AppSidebar />
-    <main class="main-content">
-      <header class="content-header">
+
+    <main class="ml-[280px] flex-1 p-8 w-[calc(100%-280px)]">
+      <!-- Header -->
+      <header class="flex justify-between items-start mb-8">
         <div class="header-left">
-          <h2 class="page-title">Panel de Control</h2>
-          <p class="page-subtitle">Monitoreo en tiempo real de conductores</p>
+          <h2 class="text-[32px] font-bold text-gray-900 m-0 mb-1.5">Panel de Control</h2>
+          <p class="text-base text-gray-500 m-0">Monitoreo en tiempo real de conductores</p>
         </div>
-        <div class="header-right">
-          <button class="refresh-btn" @click="refreshData" :disabled="dashboardStore.isLoading">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" :class="{ spinning: dashboardStore.isLoading }">
+
+        <div class="flex items-center gap-4">
+          <button
+            @click="refreshData"
+            :disabled="dashboardStore.isLoading"
+            class="py-2.5 px-5 bg-white border border-gray-200 rounded-lg text-gray-900 text-sm font-semibold cursor-pointer flex items-center gap-2 transition-all duration-300 hover:bg-gray-100 hover:border-primary hover:text-primary disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              :class="{ 'animate-spin': dashboardStore.isLoading }"
+            >
               <polyline points="23 4 23 10 17 10"></polyline>
               <polyline points="1 20 1 14 7 14"></polyline>
               <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
@@ -19,8 +35,14 @@
         </div>
       </header>
 
-      <section class="stats-section">
-        <StatCard label="Total Conductores" :value="dashboardStore.totalDrivers" subtitle="En la flota" variant="default">
+      <!-- Stats Cards -->
+      <section class="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6 mb-8">
+        <StatCard
+          label="Total Conductores"
+          :value="dashboardStore.totalDrivers"
+          subtitle="En la flota"
+          variant="default"
+        >
           <template #icon>
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -44,7 +66,12 @@
           </template>
         </StatCard>
 
-        <StatCard label="Alertas Críticas" :value="dashboardStore.criticalAlerts" subtitle="Requieren atención inmediata" variant="danger">
+        <StatCard
+          label="Alertas Críticas"
+          :value="dashboardStore.criticalAlerts"
+          subtitle="Requieren atención inmediata"
+          variant="danger"
+        >
           <template #icon>
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
@@ -70,57 +97,79 @@
         </StatCard>
       </section>
 
-      <section class="filters-section">
-        <div class="filter-tabs">
+      <!-- Filters Section -->
+      <section class="bg-white rounded-xl p-6 mb-6 shadow-sm">
+        <div class="flex gap-3 mb-5 flex-wrap">
           <button
             v-for="filter in filterOptions"
             :key="filter.value"
             @click="dashboardStore.setFilter(filter.value)"
-            class="filter-tab"
-            :class="[ { active: dashboardStore.selectedFilter === filter.value }, `filter-${filter.value}` ]"
+            :class="[
+              'flex items-center gap-2 py-2.5 px-4 border rounded-lg text-sm font-semibold cursor-pointer transition-all duration-300',
+              dashboardStore.selectedFilter === filter.value
+                ? `${filter.activeClass} border-transparent text-white`
+                : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200 hover:border-primary'
+            ]"
           >
-            <span class="filter-icon" v-html="filter.icon"></span>
-            <span class="filter-label">{{ filter.label }}</span>
-            <span class="filter-count">{{ getFilterCount(filter.value) }}</span>
+            <span class="flex items-center justify-center" v-html="filter.icon"></span>
+            <span>{{ filter.label }}</span>
+            <span :class="['py-0.5 px-2 rounded-xl text-xs font-bold', dashboardStore.selectedFilter === filter.value ? 'bg-white/20' : 'bg-black/10']">
+              {{ getFilterCount(filter.value) }}
+            </span>
           </button>
         </div>
 
-        <div class="search-container">
-          <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <div class="relative">
+          <svg class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="11" cy="11" r="8"></circle>
             <path d="m21 21-4.35-4.35"></path>
           </svg>
-          <input v-model="searchQuery" type="text" placeholder="Buscar por nombre, vehículo o ruta..." class="search-input" />
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Buscar por nombre, vehículo o ruta..."
+            class="w-full py-3 px-4 pl-11 border border-gray-200 rounded-lg text-sm text-gray-900 bg-gray-100 transition-all duration-300 focus:outline-none focus:border-primary focus:bg-white placeholder:text-gray-400"
+          />
         </div>
       </section>
 
-      <section class="drivers-section">
-        <div v-if="dashboardStore.isLoading" class="state centered">
-          <div class="spinner-large"></div>
+      <!-- Drivers Section -->
+      <section class="min-h-[400px]">
+        <div v-if="dashboardStore.isLoading" class="flex flex-col items-center justify-center py-20 text-center text-gray-500">
+          <div class="w-12 h-12 border-4 border-gray-200 border-t-primary rounded-full animate-spin mb-5"></div>
           <p>Cargando conductores...</p>
         </div>
 
-        <div v-else-if="dashboardStore.error" class="state centered error-state">
-          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <div v-else-if="dashboardStore.error" class="flex flex-col items-center justify-center py-20 text-center text-gray-500">
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-primary mb-4">
             <circle cx="12" cy="12" r="10"></circle>
             <line x1="12" y1="8" x2="12" y2="12"></line>
             <line x1="12" y1="16" x2="12.01" y2="16"></line>
           </svg>
           <p>{{ dashboardStore.error }}</p>
-          <button @click="refreshData" class="action-btn">Reintentar</button>
+          <button @click="refreshData" class="mt-4 py-2.5 px-6 bg-primary text-white border-none rounded-lg text-sm font-semibold cursor-pointer transition-all duration-300 hover:bg-primary-dark hover:-translate-y-0.5">
+            Reintentar
+          </button>
         </div>
 
-        <div v-else-if="filteredAndSearchedDrivers.length === 0" class="state centered empty-state">
-          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <div v-else-if="filteredAndSearchedDrivers.length === 0" class="flex flex-col items-center justify-center py-20 text-center text-gray-500">
+          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-gray-400 mb-4">
             <circle cx="11" cy="11" r="8"></circle>
             <path d="m21 21-4.35-4.35"></path>
           </svg>
           <p>No se encontraron conductores</p>
-          <button @click="clearFilters" class="action-btn">Limpiar filtros</button>
+          <button @click="clearFilters" class="mt-4 py-2.5 px-6 bg-primary text-white border-none rounded-lg text-sm font-semibold cursor-pointer transition-all duration-300 hover:bg-primary-dark hover:-translate-y-0.5">
+            Limpiar filtros
+          </button>
         </div>
 
-        <div v-else class="drivers-grid">
-          <DriverCard v-for="driver in filteredAndSearchedDrivers" :key="driver.id" :driver="driver" @view-details="handleViewDetails" />
+        <div v-else class="grid grid-cols-[repeat(auto-fill,minmax(340px,1fr))] gap-6">
+          <DriverCard
+            v-for="driver in filteredAndSearchedDrivers"
+            :key="driver.id"
+            :driver="driver"
+            @view-details="handleViewDetails"
+          />
         </div>
       </section>
     </main>
@@ -143,13 +192,55 @@ const highAlerts = computed(() =>
 )
 
 const filterOptions = [
-  { value: 'all', label: 'Todos', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>' },
-  { value: 'active', label: 'Activos', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>' },
-  { value: 'safe', label: 'Seguros', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>' },
-  { value: 'critical', label: 'Críticos', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>' },
-  { value: 'high', label: 'Altos', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>' },
-  { value: 'medium', label: 'Moderados', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>' },
-  { value: 'low', label: 'Leves', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>' }
+  {
+    value: 'all',
+    label: 'Todos',
+    activeClass: 'bg-gradient-to-r from-primary to-primary-dark',
+    inactiveClass: 'hover:border-primary',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>'
+  },
+  {
+    value: 'active',
+    label: 'Activos',
+    activeClass: 'bg-gradient-to-r from-primary to-primary-dark',
+    inactiveClass: 'hover:border-primary',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>'
+  },
+  {
+    value: 'safe',
+    label: 'Seguros',
+    activeClass: 'bg-gradient-to-r from-success to-green-700',
+    inactiveClass: 'hover:border-success',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>'
+  },
+  {
+    value: 'critical',
+    label: 'Críticos',
+    activeClass: 'bg-gradient-to-r from-primary to-primary-dark',
+    inactiveClass: 'hover:border-primary',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>'
+  },
+  {
+    value: 'high',
+    label: 'Altos',
+    activeClass: 'bg-gradient-to-r from-orange-500 to-orange-700',
+    inactiveClass: 'hover:border-orange-500',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>'
+  },
+  {
+    value: 'medium',
+    label: 'Moderados',
+    activeClass: 'bg-gradient-to-r from-warning to-orange-500',
+    inactiveClass: 'hover:border-warning',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>'
+  },
+  {
+    value: 'low',
+    label: 'Leves',
+    activeClass: 'bg-gradient-to-r from-info to-blue-700',
+    inactiveClass: 'hover:border-info',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>'
+  }
 ]
 
 const filteredAndSearchedDrivers = computed(() => {
@@ -189,8 +280,8 @@ const getFilterCount = (filterValue) => {
       return dashboardStore.totalDrivers
     case 'active':
       return dashboardStore.activeDrivers
-    case 'safe': // ✅ NUEVO
-      return (dashboardStore.drivers ?? []).filter(d => d.alerts === 0).length
+    case 'safe':
+      return dashboardStore.safeDrivers
     case 'critical':
       return dashboardStore.criticalAlerts
     case 'high':
@@ -223,344 +314,34 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.dashboard-container {
-  display: flex;
-  min-height: 100vh;
-  background: #F5F7FA;
-  font-family: 'Poppins', sans-serif;
-}
-
-.main-content {
-  margin-left: 280px;
-  flex: 1;
-  padding: 32px;
-  width: calc(100% - 280px);
-}
-
-.content-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 32px;
-}
-
-.page-title {
-  font-size: 32px;
-  font-weight: 700;
-  color: #222222;
-  margin: 0 0 6px 0;
-}
-
-.page-subtitle {
-  font-size: 16px;
-  color: #74788D;
-  margin: 0;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.refresh-btn {
-  padding: 10px 20px;
-  background: #ffffff;
-  border: 1px solid #E9ECEF;
-  border-radius: 8px;
-  color: #222222;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.3s ease;
-}
-
-.refresh-btn:hover:not(:disabled) {
-  background: #F5F7FA;
-  border-color: #C13515;
-  color: #C13515;
-}
-
-.refresh-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.spinning {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.stats-section {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 24px;
-  margin-bottom: 32px;
-}
-
-.filters-section {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.filter-tabs {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-
-.filter-tab {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: #F5F7FA;
-  border: 1px solid #E9ECEF;
-  border-radius: 8px;
-  color: #74788D;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.filter-tab:hover {
-  background: #E9ECEF;
-  border-color: #C13515;
-}
-
-.filter-tab.active {
-  background: linear-gradient(135deg, #C13515 0%, #8B2810 100%);
-  border-color: #C13515;
-  color: #ffffff;
-}
-
-.filter-count {
-  background: rgba(0, 0, 0, 0.1);
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.filter-tab.active .filter-count {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.search-container {
-  position: relative;
-}
-
-.search-icon {
-  position: absolute;
-  left: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #74788D;
-}
-
-.search-input {
-  width: 100%;
-  padding: 12px 16px 12px 44px;
-  border: 1px solid #E9ECEF;
-  border-radius: 8px;
-  font-size: 14px;
-  font-family: inherit;
-  color: #222222;
-  background: #F5F7FA;
-  transition: all 0.3s ease;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: #C13515;
-  background: #ffffff;
-}
-
-.search-input::placeholder {
-  color: #ADB5BD;
-}
-
-.drivers-section {
-  min-height: 400px;
-}
-
-.drivers-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 24px;
-}
-
-.state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 20px;
-  text-align: center;
-  color: #74788D;
-}
-
-.centered {
-  min-height: 200px;
-}
-
-.spinner-large {
-  width: 48px;
-  height: 48px;
-  border: 4px solid #E9ECEF;
-  border-top-color: #C13515;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-bottom: 20px;
-}
-
-.error-state svg {
-  color: #C13515;
-  margin-bottom: 16px;
-}
-
-.empty-state svg {
-  color: #ADB5BD;
-  margin-bottom: 16px;
-}
-
-.action-btn {
-  margin-top: 16px;
-  padding: 10px 24px;
-  background: #C13515;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.action-btn:hover {
-  background: #A72E12;
-  transform: translateY(-2px);
-}
-
 @media (max-width: 1200px) {
-  .stats-section {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .drivers-grid {
+  .grid {
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   }
 }
 
 @media (max-width: 768px) {
-  .sidebar {
+  aside {
     transform: translateX(-100%);
   }
 
-  .main-content {
+  main {
     margin-left: 0;
     width: 100%;
     padding: 20px;
   }
 
-  .content-header {
+  header {
     flex-direction: column;
     gap: 16px;
   }
 
-  .header-right {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .stats-section {
+  .grid {
     grid-template-columns: 1fr;
   }
 
-  .filter-tabs {
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    padding-bottom: 8px;
-  }
-
-  .filter-tab {
-    flex-shrink: 0;
-  }
-
-  .drivers-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .page-title {
+  h2 {
     font-size: 24px;
   }
-}
-
-.filter-tab.filter-critical.active {
-  background: linear-gradient(135deg, #C13515 0%, #8B2810 100%);
-}
-
-.filter-tab.filter-critical:hover:not(.active) {
-  border-color: #C13515;
-  color: #C13515;
-}
-
-.filter-tab.filter-high.active {
-  background: linear-gradient(135deg, #FFA500 0%, #FF8C00 100%);
-}
-
-.filter-tab.filter-high:hover:not(.active) {
-  border-color: #FFA500;
-  color: #FFA500;
-}
-
-.filter-tab.filter-medium.active {
-  background: linear-gradient(135deg, #FFCD18 0%, #FFA500 100%);
-}
-
-.filter-tab.filter-medium:hover:not(.active) {
-  border-color: #FFCD18;
-  color: #FFCD18;
-}
-
-.filter-tab.filter-low.active {
-  background: linear-gradient(135deg, #0066CC 0%, #004C99 100%);
-  color: white;
-  border-color: #0066CC;
-}
-
-.filter-tab.filter-low:hover:not(.active) {
-  border-color: #0066CC;
-  color: #0066CC;
-  background: rgba(0, 102, 204, 0.1);
-}
-
-/*  ESTILO PARA FILTRO SEGUROS */
-.filter-tab.filter-safe.active {
-  background: linear-gradient(135deg, #00CA75 0%, #00A060 100%);
-  color: white;
-  border-color: #00CA75;
-}
-
-.filter-tab.filter-safe:hover:not(.active) {
-  border-color: #00CA75;
-  color: #00CA75;
-  background: rgba(0, 202, 117, 0.1);
 }
 </style>
