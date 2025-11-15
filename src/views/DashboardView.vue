@@ -145,10 +145,11 @@ const highAlerts = computed(() =>
 const filterOptions = [
   { value: 'all', label: 'Todos', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>' },
   { value: 'active', label: 'Activos', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>' },
+  { value: 'safe', label: 'Seguros', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>' },
   { value: 'critical', label: 'Críticos', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>' },
   { value: 'high', label: 'Altos', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>' },
   { value: 'medium', label: 'Moderados', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>' },
-  { value: 'low', label: 'Leves', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>' }
+  { value: 'low', label: 'Leves', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>' }
 ]
 
 const filteredAndSearchedDrivers = computed(() => {
@@ -157,6 +158,8 @@ const filteredAndSearchedDrivers = computed(() => {
   if (dashboardStore.selectedFilter !== 'all') {
     if (dashboardStore.selectedFilter === 'active') {
       drivers = drivers.filter(d => d.status === 'active')
+    } else if (dashboardStore.selectedFilter === 'safe') {
+      drivers = drivers.filter(d => d.alerts === 0)
     } else if (dashboardStore.selectedFilter === 'critical') {
       drivers = drivers.filter(d => d.severity === 'Critical')
     } else if (dashboardStore.selectedFilter === 'high') {
@@ -186,6 +189,8 @@ const getFilterCount = (filterValue) => {
       return dashboardStore.totalDrivers
     case 'active':
       return dashboardStore.activeDrivers
+    case 'safe': // ✅ NUEVO
+      return (dashboardStore.drivers ?? []).filter(d => d.alerts === 0).length
     case 'critical':
       return dashboardStore.criticalAlerts
     case 'high':
@@ -544,5 +549,18 @@ onMounted(() => {
   border-color: #0066CC;
   color: #0066CC;
   background: rgba(0, 102, 204, 0.1);
+}
+
+/*  ESTILO PARA FILTRO SEGUROS */
+.filter-tab.filter-safe.active {
+  background: linear-gradient(135deg, #00CA75 0%, #00A060 100%);
+  color: white;
+  border-color: #00CA75;
+}
+
+.filter-tab.filter-safe:hover:not(.active) {
+  border-color: #00CA75;
+  color: #00CA75;
+  background: rgba(0, 202, 117, 0.1);
 }
 </style>
