@@ -1,7 +1,7 @@
 <template>
   <div
     class="driver-card"
-    :class="[ `alert-${driver.alertLevel}`, getSeverityClass(driver.severity) ]"
+    :class="getSeverityClass(driver.severity)"
     @click="handleClick"
   >
     <div class="driver-header">
@@ -15,7 +15,15 @@
         <p class="driver-vehicle">🚌 {{ driver.vehicle?.plate || 'N/A' }}</p>
       </div>
 
-      <div class="alert-badge" :class="getSeverityClass(driver.severity)">
+      <div v-if="driver.alerts === 0" class="alert-badge severity-safe">
+        <span class="alert-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        </span>
+      </div>
+      <div v-else class="alert-badge" :class="getSeverityClass(driver.severity)">
         <span class="alert-icon" v-html="getSeverityIcon(driver.severity)"></span>
       </div>
     </div>
@@ -39,8 +47,17 @@
 
     <div class="driver-footer">
       <div class="footer-info">
-        <span class="alert-count">⚠️ {{ driver.alerts }} alertas</span>
-        <span class="last-alert">{{ driver.lastAlert || '' }}</span>
+        <span v-if="driver.alerts === 0" class="no-alerts">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+          Sin alertas
+        </span>
+        <template v-else>
+          <span class="alert-count">⚠️ {{ driver.alerts }} {{ driver.alerts === 1 ? 'alerta' : 'alertas' }}</span>
+          <span class="last-alert">{{ driver.lastAlert }}</span>
+        </template>
       </div>
       <button class="view-details-btn" @click.stop="viewDetails">Ver detalles →</button>
     </div>
@@ -49,7 +66,6 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
-import { ALERT_SEVERITY } from '@/utils/constants'
 
 const props = defineProps({
   driver: { type: Object, required: true }
@@ -60,37 +76,39 @@ const router = useRouter()
 
 const getSeverityClass = (severity) => {
   const classMap = {
-    [ALERT_SEVERITY.LOW]: 'severity-low',
-    [ALERT_SEVERITY.MEDIUM]: 'severity-medium',
-    [ALERT_SEVERITY.HIGH]: 'severity-high',
-    [ALERT_SEVERITY.CRITICAL]: 'severity-critical'
+    'Safe': 'severity-safe',
+    'Low': 'severity-low',
+    'Medium': 'severity-medium',
+    'High': 'severity-high',
+    'Critical': 'severity-critical'
   }
-  return classMap[severity] || 'severity-low'
+  return classMap[severity] || 'severity-safe'
 }
 
 const getSeverityIcon = (severity) => {
   const icons = {
-    [ALERT_SEVERITY.LOW]:
-      '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"></circle><line x1="12" y1="8" x2="12" y2="12"></line><circle cx="12" cy="16" r="1"></circle></svg>',
-    [ALERT_SEVERITY.MEDIUM]:
-      '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>',
-    [ALERT_SEVERITY.HIGH]:
-      '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
-    [ALERT_SEVERITY.CRITICAL]:
-      '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13" stroke="white" stroke-width="2"></line><line x1="12" y1="17" x2="12.01" y2="17" stroke="white" stroke-width="2"></line></svg>'
+    'Low': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"></circle><line x1="12" y1="8" x2="12" y2="12"></line><circle cx="12" cy="16" r="1"></circle></svg>',
+    'Medium': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>',
+    'High': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
+    'Critical': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13" stroke="white" stroke-width="2"></line><line x1="12" y1="17" x2="12.01" y2="17" stroke="white" stroke-width="2"></line></svg>'
   }
-  return icons[severity] || icons[ALERT_SEVERITY.LOW]
+  return icons[severity] || icons['Low']
 }
 
 const calculateTripDuration = (startTime) => {
-  if (!startTime) return '0h 0m'
+  if (!startTime) return '0 min'
   const start = new Date(startTime)
-  if (Number.isNaN(start.getTime())) return '0h 0m'
+  if (Number.isNaN(start.getTime())) return '0 min'
   const now = new Date()
   const diffMs = now - start
   const hours = Math.floor(diffMs / (1000 * 60 * 60))
   const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
-  return `${hours}h ${minutes}m`
+
+  if (hours === 0) {
+    return `${minutes} min`
+  }
+
+  return `${hours}h ${minutes}min`
 }
 
 const handleClick = () => emit('click', props.driver)
@@ -117,6 +135,12 @@ const viewDetails = () => {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
 }
 
+/* ✅ BORDE VERDE PARA SEGUROS (SIN ALERTAS) */
+.driver-card.alert-safe {
+  border-left-color: #00CA75;
+  background: linear-gradient(135deg, #fff 0%, #E8F8F0 100%);
+}
+
 .driver-card.alert-critical,
 .driver-card.severity-critical {
   border-left-color: #c13515;
@@ -138,7 +162,7 @@ const viewDetails = () => {
 
 .driver-card.alert-low,
 .driver-card.severity-low {
-  border-left-color: #2b6cb0;
+  border-left-color: #0066CC;
   background: linear-gradient(135deg, #fff 0%, #f0f7ff 100%);
 }
 
@@ -217,9 +241,15 @@ const viewDetails = () => {
   flex-shrink: 0;
 }
 
+/* ✅ BADGE VERDE PARA SEGUROS */
+.alert-badge.severity-safe {
+  background: #E8F8F0;
+  color: #00CA75;
+}
+
 .alert-badge.severity-low {
   background: #f0f7ff;
-  color: #2b6cb0;
+  color: #0066CC;
 }
 
 .alert-badge.severity-medium {
@@ -283,6 +313,19 @@ const viewDetails = () => {
   flex-direction: column;
   gap: 4px;
   flex: 1;
+}
+
+.no-alerts {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #00CA75;
+  font-weight: 600;
+}
+
+.no-alerts svg {
+  color: #00CA75;
 }
 
 .alert-count {
