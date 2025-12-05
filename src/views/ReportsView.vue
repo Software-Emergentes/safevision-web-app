@@ -354,9 +354,10 @@ const loadAllAlerts = async () => {
     // Obtener alertas de CADA conductor
     for (const driver of dashboardStore.drivers) {
       try {
-        const alertsResponse = await fetch(
-          `https://localhost:44385/api/alerts/reports/driver/${driver.id}`,
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'https://safevision-web-service-1.onrender.com'}/api/alerts/reports/driver/${driver.id}`,
           {
+            method: 'GET',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
@@ -364,8 +365,8 @@ const loadAllAlerts = async () => {
           }
         )
 
-        if (alertsResponse.ok) {
-          const alerts = await alertsResponse.json()
+        if (response.ok) {
+          const alerts = await response.json()
 
           // Agregar cada alerta con su timestamp ISO
           alerts.forEach(alert => {

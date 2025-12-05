@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5272/api/v1'
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://safevision-web-service-1.onrender.com/api/v1'
 
 // Helper para convertir PascalCase (del backend .NET)
 const toCamelCase = (obj) => {

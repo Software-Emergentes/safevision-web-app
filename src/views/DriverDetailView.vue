@@ -669,7 +669,7 @@ const loadDriverAlerts = async (driverId) => {
       return
     }
 
-    const response = await fetch(`https://localhost:44385/api/alerts/reports/driver/${driverId}`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'https://safevision-web-service-1.onrender.com'}/api/alerts/reports/driver/${driverId}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -719,7 +719,7 @@ const loadDriverTrips = async (driverId) => {
 
     console.log(`🔄 Cargando viajes del conductor ${driverId}...`)
 
-    const response = await fetch(`https://localhost:44385/api/trips/driver/${driverId}`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'https://safevision-web-service-1.onrender.com'}/api/trips/driver/${driverId}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

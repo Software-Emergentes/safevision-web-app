@@ -79,7 +79,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
       }
 
       // 1. Obtener conductores
-      const driversResponse = await fetch('https://localhost:44385/api/v1/drivers', {
+      const driversResponse = await fetch(`${import.meta.env.VITE_API_URL || 'https://safevision-web-service-1.onrender.com/api/v1'}/drivers`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -100,7 +100,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
           try {
             // Obtener licencia
             const licenseResponse = await fetch(
-              `https://localhost:44385/api/v1/drivers/${driver.id}/license`,
+              `${import.meta.env.VITE_API_URL || 'https://safevision-web-service-1.onrender.com/api/v1'}/drivers/${driver.id}/license`,
               {
                 headers: {
                   'Content-Type': 'application/json',
@@ -122,7 +122,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
             try {
               const fatigueResponse = await fetch(
-                `https://localhost:44385/api/fatigue/status/${driver.id}`,
+                `${import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'https://safevision-web-service-1.onrender.com'}/api/fatigue/status/${driver.id}`,
                 {
                   headers: {
                     'Content-Type': 'application/json',
@@ -155,7 +155,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
             let alerts = []
             try {
               const alertsResponse = await fetch(
-                `https://localhost:44385/api/alerts/reports/driver/${driver.id}`,
+                `${import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'https://safevision-web-service-1.onrender.com'}/api/alerts/reports/driver/${driver.id}`,
                 {
                   headers: {
                     'Content-Type': 'application/json',
@@ -196,7 +196,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
             let currentTrip = null
             try {
               const tripResponse = await fetch(
-                `https://localhost:44385/api/trips/${driver.id}`,
+                `${import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'https://safevision-web-service-1.onrender.com'}/api/trips/${driver.id}`,
                 {
                   headers: {
                     'Content-Type': 'application/json',
