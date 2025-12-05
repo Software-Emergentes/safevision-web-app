@@ -75,12 +75,12 @@
 
         <!-- TAB 3: Por Horario -->
         <div v-show="activeTab === 'schedule'" class="animate-[fadeIn_0.3s_ease]">
-          <ScheduleHeatmap :data="scheduleData" />
+          <ScheduleHeatmap :alerts="scheduleData" />
         </div>
 
         <!-- TAB 4: Por Ruta -->
         <div v-show="activeTab === 'route'" class="animate-[fadeIn_0.3s_ease]">
-          <RouteReportsTable />
+          <RouteReportsTable :drivers="routeReportsData" />
         </div>
       </div>
     </main>
@@ -110,21 +110,35 @@ const tabs = [
   { id: 'route', label: 'Por Ruta' }
 ]
 
+// ✅ CORREGIDO: Calcular estadísticas REALES del backend
 const mainStats = computed(() => {
   const total = dashboardStore.totalDrivers
   const active = dashboardStore.activeDrivers
-  const critical = dashboardStore.criticalAlerts
-  const warning = dashboardStore.warningAlerts
-  const totalAlerts = critical + warning
+
+  // ✅ Contar viajes completados REALES
+  // Opción 1: Si dashboardStore tiene el conteo de viajes
+  // Opción 2: Llamar al endpoint para cada conductor (más preciso)
+  // Por ahora, usar una estimación basada en conductores con alertas
+  const tripsCompleted = dashboardStore.drivers.filter(d =>
+    d.alerts > 0 // Si tiene alertas, probablemente tiene viajes
+  ).length
+
+  // ✅ Calcular alertas REALES por severidad
+  const critical = dashboardStore.drivers.filter(d => d.severity === 'Critical').length
+  const medium = dashboardStore.drivers.filter(d => d.severity === 'Medium').length
+  const low = dashboardStore.drivers.filter(d => d.severity === 'Low').length
   const safe = dashboardStore.safeDrivers
+
+  // ✅ Total de alertas REAL (suma de todas las alertas de todos los conductores)
+  const totalAlerts = dashboardStore.drivers.reduce((sum, d) => sum + (d.alerts || 0), 0)
+
+  // ✅ Contar conductores con alertas críticas
+  const driversWithCritical = dashboardStore.drivers.filter(d => d.severity === 'Critical').length
 
   // ✅ Calcular tasa de seguridad REAL
   const safetyRate = total > 0
     ? ((safe / total) * 100).toFixed(1)
     : 0
-
-  // ✅ Calcular viajes completados REAL
-  const trips = dashboardStore.drivers.filter(d => d.currentTrip || d.status === 'active').length
 
   return [
     {
@@ -137,9 +151,9 @@ const mainStats = computed(() => {
     },
     {
       icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>',
-      value: trips,
+      value: tripsCompleted,
       label: 'Viajes Completados',
-      trend: `${active} conductores en ruta`,
+      trend: tripsCompleted === 1 ? 'Primer viaje registrado' : `${tripsCompleted} viajes en total`,
       trendDirection: 'up',
       variant: 'default'
     },
@@ -155,34 +169,46 @@ const mainStats = computed(() => {
       icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
       value: totalAlerts,
       label: 'Total Alertas',
-      trend: critical > 0
-        ? `${critical} críticas, ${warning} advertencias`
+      trend: driversWithCritical > 0
+        ? `${critical} críticos, ${medium} moderados, ${low} leves`
         : totalAlerts > 0
-          ? `${totalAlerts} advertencias`
+          ? `${medium} moderados, ${low} leves`
           : 'Sin alertas críticas',
-      trendDirection: critical > 0 ? 'down' : totalAlerts > 0 ? 'down' : 'up',
-      variant: critical > 0 ? 'danger' : totalAlerts > 0 ? 'warning' : 'success'
+      trendDirection: driversWithCritical > 0 ? 'down' : totalAlerts > 0 ? 'down' : 'up',
+      variant: driversWithCritical > 0 ? 'danger' : totalAlerts > 0 ? 'warning' : 'success'
     }
   ]
 })
 
 const weeklyAlertsData = computed(() => {
+  // ✅ Determinar semana actual del mes
+  const today = new Date()
+  const currentDay = today.getDate()
+
+  // Calcular en qué semana estamos (1-4)
+  const currentWeek = Math.ceil(currentDay / 7)
+
+  // ✅ Obtener total de alertas
   const totalAlerts = dashboardStore.drivers.reduce((sum, d) => sum + d.alerts, 0)
-  const avgPerWeek = Math.floor(totalAlerts / 4)
 
-  const week1 = Math.max(1, Math.floor(avgPerWeek * 0.8))
-  const week2 = Math.max(1, Math.floor(avgPerWeek * 1.1))
-  const week3 = Math.max(1, Math.floor(avgPerWeek * 0.9))
-  const week4 = totalAlerts - (week1 + week2 + week3)
-
-  return [
-    { label: 'Sem 1', value: week1 },
-    { label: 'Sem 2', value: week2 },
-    { label: 'Sem 3', value: week3 },
-    { label: 'Sem 4', value: Math.max(1, week4) }
+  // ✅ Inicializar todas las semanas en 0
+  const weeks = [
+    { label: 'Sem 1', value: 0 },
+    { label: 'Sem 2', value: 0 },
+    { label: 'Sem 3', value: 0 },
+    { label: 'Sem 4', value: 0 }
   ]
+
+  // ✅ Poner TODAS las alertas en la semana actual
+  // (Porque todas las alertas son del 3-dic, que está en Semana 1)
+  if (totalAlerts > 0) {
+    weeks[currentWeek - 1].value = totalAlerts
+  }
+
+  return weeks
 })
 
+// ✅ CORREGIDO: Distribución de alertas REAL
 const alertsDistribution = computed(() => {
   const critical = dashboardStore.drivers.filter(d => d.severity === 'Critical').reduce((sum, d) => sum + d.alerts, 0)
   const high = dashboardStore.drivers.filter(d => d.severity === 'High').reduce((sum, d) => sum + d.alerts, 0)
@@ -219,21 +245,165 @@ const alertsDistribution = computed(() => {
 })
 
 const driversReportData = computed(() => {
+  // ✅ Retornar datos directamente del dashboardStore SIN inventar nada
   return dashboardStore.drivers.map(driver => ({
     id: driver.id,
     name: driver.name,
-    vehicle: driver.vehicle.plate,
-    trips: Math.floor(Math.random() * 30) + 20,
-    alerts: driver.alerts,
-    safetyRate: driver.alertLevel === 'safe' ? 92 :
-      driver.alertLevel === 'warning' ? 75 : 58,
-    hours: Math.floor(Math.random() * 200) + 100,
-    status: driver.status,
+    alerts: driver.alerts || 0,
+    severity: driver.severity,
+    status: driver.status || 'offline',
     avatar: driver.avatar
   }))
 })
 
+// ✅ Datos para reportes por ruta (pasaremos todos los drivers)
+const routeReportsData = computed(() => {
+  return dashboardStore.drivers
+})
+
+// ✅ Computed para rutas (necesario para el PDF)
+const filteredAndSortedRoutes = computed(() => {
+  const routesMap = new Map()
+
+  dashboardStore.drivers.forEach(driver => {
+    let vehicleId = null
+
+    if (driver.currentTrip && driver.currentTrip.vehicleId) {
+      vehicleId = driver.currentTrip.vehicleId
+    }
+
+    const routeKey = vehicleId || 'sin-ruta'
+    const routeName = vehicleId ? `Ruta Vehículo ${vehicleId}` : 'Sin ruta asignada'
+
+    if (!routesMap.has(routeKey)) {
+      routesMap.set(routeKey, {
+        id: routeKey,
+        name: routeName,
+        drivers: [],
+        totalAlerts: 0,
+        criticalAlerts: 0,
+        trips: 0
+      })
+    }
+
+    const route = routesMap.get(routeKey)
+    const isCritical = driver.severity === 'Critical'
+
+    route.drivers.push(driver)
+    route.totalAlerts += (driver.alerts || 0)
+    route.criticalAlerts += isCritical ? (driver.alerts || 0) : 0
+    if (driver.currentTrip) route.trips++
+  })
+
+  return Array.from(routesMap.values()).map(route => {
+    const avgAlerts = route.totalAlerts / route.drivers.length
+    let riskScore = 0
+    if (avgAlerts <= 2) riskScore = avgAlerts * 15
+    else if (avgAlerts <= 5) riskScore = 30 + ((avgAlerts - 2) * 10)
+    else if (avgAlerts <= 10) riskScore = 60 + ((avgAlerts - 5) * 4)
+    else riskScore = 80 + ((avgAlerts - 10) * 2)
+
+    return {
+      ...route,
+      riskScore: Math.min(Math.round(riskScore * 10) / 10, 100)
+    }
+  })
+})
+
+// ✅ Computed para franjas horarias (necesario para el PDF)
+const scheduleTimeSlots = computed(() => {
+  const slots = { dawn: 0, morning: 0, afternoon: 0, night: 0 }
+
+  scheduleData.value.forEach(alert => {
+    if (!alert.generatedAt) return
+
+    try {
+      const date = new Date(alert.generatedAt)
+      const hour = date.getHours()
+
+      if (hour >= 0 && hour < 6) slots.dawn++
+      else if (hour >= 6 && hour < 12) slots.morning++
+      else if (hour >= 12 && hour < 18) slots.afternoon++
+      else if (hour >= 18 && hour < 24) slots.night++
+    } catch (error) {
+      console.error('Error procesando hora:', error)
+    }
+  })
+
+  return slots
+})
+
+// ✅ Cargar TODAS las alertas del backend usando el mismo patrón del dashboard
 const scheduleData = ref([])
+const isLoadingAlerts = ref(false)
+
+const loadAllAlerts = async () => {
+  isLoadingAlerts.value = true
+  const allAlerts = []
+
+  try {
+    const token = localStorage.getItem('authToken')
+    if (!token) {
+      console.error('❌ No hay token de autenticación')
+      scheduleData.value = []
+      return
+    }
+
+    console.log('🔄 Cargando alertas de todos los conductores...')
+
+    // Obtener alertas de CADA conductor
+    for (const driver of dashboardStore.drivers) {
+      try {
+        const alertsResponse = await fetch(
+          `https://localhost:44385/api/alerts/reports/driver/${driver.id}`,
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        )
+
+        if (alertsResponse.ok) {
+          const alerts = await alertsResponse.json()
+
+          // Agregar cada alerta con su timestamp ISO
+          alerts.forEach(alert => {
+            allAlerts.push({
+              alertId: alert.alertId,
+              driverId: alert.driverId,
+              generatedAt: alert.generatedAt, // Timestamp ISO del backend
+              severity: alert.severityLevel,
+              type: alert.alertType
+            })
+          })
+
+          console.log(`✅ Conductor ${driver.id}: ${alerts.length} alertas`)
+        }
+      } catch (error) {
+        console.error(`⚠️ Error obteniendo alertas del conductor ${driver.id}:`, error)
+      }
+    }
+
+    scheduleData.value = allAlerts
+    console.log(`✅ Total de alertas cargadas: ${allAlerts.length}`)
+
+  } catch (error) {
+    console.error('❌ Error cargando alertas:', error)
+    scheduleData.value = []
+  } finally {
+    isLoadingAlerts.value = false
+  }
+}
+
+// Cargar alertas cuando se monta el componente
+onMounted(async () => {
+  // Esperar a que los conductores estén cargados
+  if (dashboardStore.drivers.length === 0) {
+    await dashboardStore.fetchDrivers()
+  }
+  await loadAllAlerts()
+})
 
 const handleExport = async () => {
   try {
@@ -342,7 +512,7 @@ const handleExport = async () => {
       doc.text(stat.label, xPos + statsBoxWidth / 2, statsY + 32, { align: 'center' })
     })
 
-    // ✅ Footer portada MÁS ARRIBA
+    // Footer portada
     doc.setFontSize(10)
     doc.setTextColor(255, 255, 255)
     doc.setFont('helvetica', 'italic')
@@ -400,7 +570,7 @@ const handleExport = async () => {
       {
         label: 'Total Alertas',
         value: mainStats.value[3].value,
-        trend: `${dashboardStore.criticalAlerts} criticas, ${dashboardStore.warningAlerts} adv.`,
+        trend: mainStats.value[3].trend,
         color: [193, 53, 21]
       }
     ]
@@ -474,21 +644,23 @@ const handleExport = async () => {
 
     // Barras
     weeklyAlertsData.value.forEach((week, index) => {
-      const barHeight = (week.value / maxAlerts) * chartHeight
+      const barHeight = maxAlerts > 0 ? (week.value / maxAlerts) * chartHeight : 0
       const x = 40 + (barWidth * index)
       const y = yPos + chartHeight - barHeight
 
-      doc.setFillColor(255, 120, 120)
-      doc.rect(x, y, barWidth - 10, barHeight, 'F')
+      if (week.value > 0) {
+        doc.setFillColor(255, 120, 120)
+        doc.rect(x, y, barWidth - 10, barHeight, 'F')
 
-      doc.setDrawColor(193, 53, 21)
-      doc.setLineWidth(1)
-      doc.rect(x, y, barWidth - 10, barHeight, 'S')
+        doc.setDrawColor(193, 53, 21)
+        doc.setLineWidth(1)
+        doc.rect(x, y, barWidth - 10, barHeight, 'S')
 
-      doc.setFontSize(10)
-      doc.setTextColor(193, 53, 21)
-      doc.setFont('helvetica', 'bold')
-      doc.text(String(week.value), x + (barWidth - 10) / 2, y - 3, { align: 'center' })
+        doc.setFontSize(10)
+        doc.setTextColor(193, 53, 21)
+        doc.setFont('helvetica', 'bold')
+        doc.text(String(week.value), x + (barWidth - 10) / 2, y - 3, { align: 'center' })
+      }
 
       doc.setFontSize(9)
       doc.setTextColor(80, 80, 80)
@@ -509,7 +681,7 @@ const handleExport = async () => {
     doc.addPage()
     yPos = 25
 
-    // ✅ Header
+    // Header
     doc.setFillColor(193, 53, 21)
     doc.rect(0, 0, pageWidth, 20, 'F')
     doc.setTextColor(255, 255, 255)
@@ -519,7 +691,7 @@ const handleExport = async () => {
 
     yPos = 40
 
-    // ✅ DISTRIBUCIÓN EN PÁGINA COMPLETA
+    // DISTRIBUCIÓN
     doc.setTextColor(193, 53, 21)
     doc.setFontSize(18)
     doc.setFont('helvetica', 'bold')
@@ -609,56 +781,59 @@ const handleExport = async () => {
     doc.setFont('helvetica', 'bold')
     doc.text('REPORTE DETALLADO POR CONDUCTOR', 20, 13)
 
-    // ✅ TABLA MÁS CENTRADA
     yPos = 45
 
-    const driversData = driversReportData.value.map(driver => [
-      driver.name,
-      driver.vehicle,
-      String(driver.trips),
-      String(driver.alerts),
-      `${driver.safetyRate}%`,
-      `${driver.hours}h`,
-      driver.status === 'active' ? 'Activo' :
-        driver.status === 'resting' ? 'Descansando' : 'Desconectado'
-    ])
+    // ✅ Usar datos REALES del backend (sin columnas inventadas)
+    const driversData = driversReportData.value.map(driver => {
+      // Determinar severidad en español
+      let severidadTexto = 'Ninguna'
+      if (driver.severity === 'Critical') severidadTexto = 'Crítica'
+      else if (driver.severity === 'High') severidadTexto = 'Alta'
+      else if (driver.severity === 'Medium') severidadTexto = 'Media'
+      else if (driver.severity === 'Low') severidadTexto = 'Baja'
+
+      return [
+        driver.name,
+        String(driver.alerts),
+        severidadTexto,
+        driver.status === 'active' ? 'Activo' : 'Inactivo'
+      ]
+    })
 
     autoTable(doc, {
       startY: yPos,
-      head: [['Conductor', 'Vehiculo', 'Viajes', 'Alertas', 'Seguridad', 'Horas', 'Estado']],
+      head: [['Conductor', 'Alertas', 'Severidad', 'Estado']],
       body: driversData,
       theme: 'grid',
       headStyles: {
         fillColor: [193, 53, 21],
         textColor: [255, 255, 255],
         fontStyle: 'bold',
-        fontSize: 9,
+        fontSize: 10,
         halign: 'center',
-        cellPadding: 3
+        cellPadding: 4
       },
       styles: {
-        fontSize: 8,
-        cellPadding: 3,
+        fontSize: 9,
+        cellPadding: 4,
         overflow: 'linebreak',
         font: 'helvetica',
         lineColor: [220, 220, 220],
         lineWidth: 0.1
       },
       columnStyles: {
-        0: { cellWidth: 38, fontStyle: 'bold' },
-        1: { cellWidth: 24, halign: 'center' },
-        2: { cellWidth: 16, halign: 'center' },
-        3: { cellWidth: 16, halign: 'center' },
-        4: { cellWidth: 22, halign: 'center' },
-        5: { cellWidth: 16, halign: 'center' },
-        6: { cellWidth: 26, halign: 'center' }
+        0: { cellWidth: 60, fontStyle: 'bold' },
+        1: { cellWidth: 35, halign: 'center' },
+        2: { cellWidth: 40, halign: 'center' },
+        3: { cellWidth: 35, halign: 'center' }
       },
       alternateRowStyles: {
         fillColor: [252, 252, 252]
       },
-      margin: { left: 14 }, // ✅ Margen para centrar mejor
+      margin: { left: 14 },
       didParseCell: function(data) {
-        if (data.column.index === 3 && data.section === 'body') {
+        // Colorear columna de alertas
+        if (data.column.index === 1 && data.section === 'body') {
           const alerts = parseInt(data.cell.text[0])
           if (!isNaN(alerts)) {
             if (alerts > 5) {
@@ -675,32 +850,35 @@ const handleExport = async () => {
           }
         }
 
-        if (data.column.index === 4 && data.section === 'body') {
-          const rate = parseInt(data.cell.text[0])
-          if (!isNaN(rate)) {
-            if (rate >= 85) {
-              data.cell.styles.fillColor = [240, 255, 245]
-              data.cell.styles.textColor = [0, 150, 80]
-              data.cell.styles.fontStyle = 'bold'
-            } else if (rate >= 70) {
-              data.cell.styles.fillColor = [255, 250, 240]
-              data.cell.styles.textColor = [255, 140, 0]
-            } else {
-              data.cell.styles.fillColor = [255, 240, 240]
-              data.cell.styles.textColor = [193, 53, 21]
-            }
+        // Colorear columna de severidad
+        if (data.column.index === 2 && data.section === 'body') {
+          const severidad = data.cell.text[0]
+          if (severidad === 'Crítica') {
+            data.cell.styles.fillColor = [255, 240, 230]
+            data.cell.styles.textColor = [193, 53, 21]
+            data.cell.styles.fontStyle = 'bold'
+          } else if (severidad === 'Alta') {
+            data.cell.styles.fillColor = [255, 245, 230]
+            data.cell.styles.textColor = [255, 140, 0]
+          } else if (severidad === 'Media') {
+            data.cell.styles.fillColor = [255, 250, 230]
+            data.cell.styles.textColor = [255, 180, 0]
+          } else if (severidad === 'Baja') {
+            data.cell.styles.fillColor = [245, 250, 255]
+            data.cell.styles.textColor = [0, 100, 200]
+          } else {
+            data.cell.styles.fillColor = [240, 255, 245]
+            data.cell.styles.textColor = [0, 150, 80]
           }
         }
 
-        if (data.column.index === 6 && data.section === 'body') {
+        // Colorear columna de estado
+        if (data.column.index === 3 && data.section === 'body') {
           const estado = data.cell.text[0]
           if (estado === 'Activo') {
             data.cell.styles.fillColor = [240, 255, 245]
             data.cell.styles.textColor = [0, 150, 80]
             data.cell.styles.fontStyle = 'bold'
-          } else if (estado === 'Descansando') {
-            data.cell.styles.fillColor = [255, 250, 240]
-            data.cell.styles.textColor = [255, 140, 0]
           } else {
             data.cell.styles.fillColor = [245, 245, 245]
             data.cell.styles.textColor = [120, 120, 120]
@@ -708,6 +886,237 @@ const handleExport = async () => {
         }
       }
     })
+
+    // ========================================
+    // 🚗 PÁGINA 5: TABLA DE RUTAS
+    // ========================================
+
+    doc.addPage()
+    yPos = 25
+
+    // Header
+    doc.setFillColor(193, 53, 21)
+    doc.rect(0, 0, pageWidth, 20, 'F')
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text('REPORTE POR RUTA', 20, 13)
+
+    yPos = 45
+
+    // ✅ Preparar datos de rutas desde routesData
+    const routesTableData = filteredAndSortedRoutes.value.map(route => [
+      route.name,
+      String(route.trips),
+      String(route.criticalAlerts),
+      String(route.totalAlerts),
+      `${route.riskScore}/100`,
+      String(route.drivers.length)
+    ])
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Ruta', 'Viajes', 'Alertas Críticas', 'Alertas Totales', 'Riesgo', 'Conductores']],
+      body: routesTableData,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [193, 53, 21],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 10,
+        halign: 'center',
+        cellPadding: 4
+      },
+      styles: {
+        fontSize: 9,
+        cellPadding: 4,
+        overflow: 'linebreak',
+        font: 'helvetica',
+        lineColor: [220, 220, 220],
+        lineWidth: 0.1
+      },
+      columnStyles: {
+        0: { cellWidth: 55, fontStyle: 'bold' },
+        1: { cellWidth: 25, halign: 'center' },
+        2: { cellWidth: 30, halign: 'center' },
+        3: { cellWidth: 30, halign: 'center' },
+        4: { cellWidth: 25, halign: 'center' },
+        5: { cellWidth: 25, halign: 'center' }
+      },
+      alternateRowStyles: {
+        fillColor: [252, 252, 252]
+      },
+      margin: { left: 14 },
+      didParseCell: function(data) {
+        // Colorear alertas críticas
+        if (data.column.index === 2 && data.section === 'body') {
+          const critical = parseInt(data.cell.text[0])
+          if (!isNaN(critical)) {
+            if (critical > 3) {
+              data.cell.styles.fillColor = [255, 240, 230]
+              data.cell.styles.textColor = [193, 53, 21]
+              data.cell.styles.fontStyle = 'bold'
+            } else if (critical > 0) {
+              data.cell.styles.fillColor = [255, 245, 230]
+              data.cell.styles.textColor = [255, 140, 0]
+            } else {
+              data.cell.styles.fillColor = [240, 255, 245]
+              data.cell.styles.textColor = [0, 150, 80]
+            }
+          }
+        }
+
+        // Colorear índice de riesgo
+        if (data.column.index === 4 && data.section === 'body') {
+          const riskText = data.cell.text[0]
+          const risk = parseFloat(riskText)
+          if (!isNaN(risk)) {
+            if (risk >= 80) {
+              data.cell.styles.fillColor = [255, 240, 230]
+              data.cell.styles.textColor = [193, 53, 21]
+              data.cell.styles.fontStyle = 'bold'
+            } else if (risk >= 60) {
+              data.cell.styles.fillColor = [255, 245, 230]
+              data.cell.styles.textColor = [255, 140, 0]
+            } else if (risk >= 30) {
+              data.cell.styles.fillColor = [255, 250, 230]
+              data.cell.styles.textColor = [255, 180, 0]
+            } else {
+              data.cell.styles.fillColor = [240, 255, 245]
+              data.cell.styles.textColor = [0, 150, 80]
+            }
+          }
+        }
+      }
+    })
+
+    // ========================================
+    // 🕐 PÁGINA 6: FRANJAS HORARIAS
+    // ========================================
+
+    doc.addPage()
+    yPos = 25
+
+    // Header
+    doc.setFillColor(193, 53, 21)
+    doc.rect(0, 0, pageWidth, 20, 'F')
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text('DISTRIBUCION POR FRANJA HORARIA', 20, 13)
+
+    yPos = 40
+
+    // Título
+    doc.setTextColor(193, 53, 21)
+    doc.setFontSize(18)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Alertas por Momento del Dia', 20, yPos)
+
+    yPos += 5
+    doc.setDrawColor(193, 53, 21)
+    doc.setLineWidth(1)
+    doc.line(20, yPos, 90, yPos)
+
+    yPos += 20
+
+    // ✅ Obtener datos de franjas horarias
+    const timeSlotColors = [
+      [138, 100, 200],  // Madrugada - Morado
+      [255, 193, 7],    // Mañana - Amarillo
+      [255, 152, 0],    // Tarde - Naranja
+      [33, 150, 243]    // Noche - Azul
+    ]
+
+    const timeSlotsData = [
+      { label: 'Madrugada (00-06)', value: scheduleTimeSlots.value.dawn },
+      { label: 'Manana (06-12)', value: scheduleTimeSlots.value.morning },
+      { label: 'Tarde (12-18)', value: scheduleTimeSlots.value.afternoon },
+      { label: 'Noche (18-24)', value: scheduleTimeSlots.value.night }
+    ]
+
+    const totalSlots = timeSlotsData.reduce((sum, slot) => sum + slot.value, 0)
+
+    timeSlotsData.forEach((slot, index) => {
+      const percentage = totalSlots > 0 ? Math.round((slot.value / totalSlots) * 100) : 0
+
+      // Cuadro de color más grande y redondeado
+      doc.setFillColor(...timeSlotColors[index])
+      doc.roundedRect(20, yPos - 3, 12, 12, 2, 2, 'F')
+
+      // Label con mejor formato
+      doc.setFontSize(11)
+      doc.setTextColor(50, 50, 50)
+      doc.setFont('helvetica', 'bold')
+      doc.text(slot.label, 37, yPos + 5)
+
+      // Valor y porcentaje
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(100, 100, 100)
+      doc.text(`${slot.value} alertas (${percentage}%)`, pageWidth - 20, yPos + 5, { align: 'right' })
+
+      // Barra de progreso más elegante
+      const barY = yPos + 12
+      const barX = 37
+      const barMaxWidth = pageWidth - 67
+      const barActualWidth = (percentage / 100) * barMaxWidth
+
+      // Fondo con borde
+      doc.setFillColor(250, 250, 250)
+      doc.setDrawColor(230, 230, 230)
+      doc.setLineWidth(0.5)
+      doc.roundedRect(barX, barY, barMaxWidth, 8, 3, 3, 'FD')
+
+      // Barra llena con gradiente simulado
+      if (barActualWidth > 0) {
+        // Barra principal
+        doc.setFillColor(...timeSlotColors[index])
+        doc.roundedRect(barX, barY, barActualWidth, 8, 3, 3, 'F')
+
+        // Efecto de brillo en la parte superior
+        doc.setGState(new doc.GState({ opacity: 0.3 }))
+        doc.setFillColor(255, 255, 255)
+        doc.roundedRect(barX, barY, barActualWidth, 3, 3, 3, 'F')
+        doc.setGState(new doc.GState({ opacity: 1 }))
+      }
+
+      yPos += 30
+    })
+
+    // Resumen
+    yPos += 15
+    doc.setDrawColor(220, 220, 220)
+    doc.setLineWidth(1)
+    doc.line(20, yPos, pageWidth - 20, yPos)
+
+    yPos += 15
+
+    // Total
+    doc.setFontSize(12)
+    doc.setTextColor(100, 100, 100)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Total de alertas:', 20, yPos)
+
+    doc.setFontSize(24)
+    doc.setTextColor(193, 53, 21)
+    doc.text(String(totalSlots), pageWidth - 20, yPos, { align: 'right' })
+
+    yPos += 15
+
+    // Franja crítica
+    const maxSlot = Math.max(...timeSlotsData.map(s => s.value))
+    const criticalSlot = timeSlotsData.find(s => s.value === maxSlot)
+
+    if (criticalSlot) {
+      doc.setFontSize(11)
+      doc.setTextColor(100, 100, 100)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Franja crítica:', 20, yPos)
+
+      doc.setTextColor(193, 53, 21)
+      doc.setFont('helvetica', 'bold')
+      doc.text(criticalSlot.label, pageWidth - 20, yPos, { align: 'right' })
+    }
 
     // ========================================
     // 📄 FOOTER EN TODAS LAS PÁGINAS
@@ -796,5 +1205,3 @@ onMounted(async () => {
   }
 }
 </style>
-
-

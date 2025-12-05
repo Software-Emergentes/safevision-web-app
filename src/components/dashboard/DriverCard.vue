@@ -46,10 +46,6 @@
         <span class="text-xs text-gray-500 font-medium">Licencia</span>
         <span class="text-sm text-gray-900 font-semibold">{{ driver.licenseNumber || 'N/A' }}</span>
       </div>
-      <div v-if="driver.currentTrip" class="flex flex-col gap-1 col-span-2">
-        <span class="text-xs text-gray-500 font-medium">Tiempo en ruta</span>
-        <span class="text-sm text-gray-900 font-semibold">{{ calculateTripDuration(driver.currentTrip.startTime) }}</span>
-      </div>
     </div>
 
     <!-- Footer -->
@@ -117,22 +113,6 @@ const getSeverityIcon = (severity) => {
     'Critical': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13" stroke="white" stroke-width="2"></line><line x1="12" y1="17" x2="12.01" y2="17" stroke="white" stroke-width="2"></line></svg>'
   }
   return icons[severity] || icons['Low']
-}
-
-const calculateTripDuration = (startTime) => {
-  if (!startTime) return '0 min'
-  const start = new Date(startTime)
-  if (Number.isNaN(start.getTime())) return '0 min'
-  const now = new Date()
-  const diffMs = now - start
-  const hours = Math.floor(diffMs / (1000 * 60 * 60))
-  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
-
-  if (hours === 0) {
-    return `${minutes} min`
-  }
-
-  return `${hours}h ${minutes}min`
 }
 
 const handleClick = () => emit('click', props.driver)

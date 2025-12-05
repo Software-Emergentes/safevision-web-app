@@ -14,6 +14,7 @@
           ]"
         >
           {{ filter.label }}
+          <span class="ml-1.5 text-xs opacity-75">({{ getFilterCount(filter.value) }})</span>
         </button>
       </div>
     </div>
@@ -32,7 +33,15 @@
         <circle cx="5.5" cy="18.5" r="2.5"></circle>
         <circle cx="18.5" cy="18.5" r="2.5"></circle>
       </svg>
-      <p>No hay viajes registrados</p>
+      <p v-if="selectedStatus === 'all'">No hay viajes registrados</p>
+      <p v-else>No hay viajes en esta categoría</p>
+      <button
+        v-if="selectedStatus !== 'all'"
+        @click="selectedStatus = 'all'"
+        class="mt-4 py-2 px-4 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary-dark transition-all"
+      >
+        Ver todos los viajes
+      </button>
     </div>
 
     <!-- Lista de viajes -->
@@ -49,6 +58,9 @@
     <div v-if="filteredTrips.length > 0" class="flex justify-center pt-2">
       <p class="text-sm text-gray-500 m-0">
         Mostrando {{ filteredTrips.length }} de {{ trips.length }} viajes
+        <span v-if="selectedStatus !== 'all'" class="font-semibold">
+          ({{ statusFilters.find(f => f.value === selectedStatus)?.label }})
+        </span>
       </p>
     </div>
   </div>
@@ -57,7 +69,6 @@
 <script setup>
 import { ref, computed } from 'vue'
 import TripHistoryCard from './TripHistoryCard.vue'
-import { ALERT_SEVERITY } from '@/utils/constants'
 
 const props = defineProps({
   trips: {
@@ -77,18 +88,38 @@ const selectedStatus = ref('all')
 
 const statusFilters = [
   { label: 'Todos', value: 'all' },
-  { label: 'Críticos', value: ALERT_SEVERITY.CRITICAL },
-  { label: 'Altos', value: ALERT_SEVERITY.HIGH },
-  { label: 'Moderados', value: ALERT_SEVERITY.MEDIUM },
-  { label: 'Leves', value: ALERT_SEVERITY.LOW }
+  { label: 'Críticos', value: 'Critical' },
+  { label: 'Altos', value: 'High' },
+  { label: 'Moderados', value: 'Medium' },
+  { label: 'Leves', value: 'Low' }
+  // ✅ NO incluimos "Safe" como filtro separado
 ]
 
 const filteredTrips = computed(() => {
   if (selectedStatus.value === 'all') {
     return props.trips
   }
-  return props.trips.filter(trip => trip.status === selectedStatus.value)
+
+  // ✅ CORRECCIÓN: Solo filtrar viajes que tengan alertas (status !== 'Safe')
+  return props.trips.filter(trip => {
+    // Si el viaje es "Safe" (0 alertas), NO aparece en ningún filtro de severidad
+    if (trip.status === 'Safe') {
+      return false
+    }
+
+    // Para los demás filtros, comparar normalmente
+    return trip.status === selectedStatus.value
+  })
 })
+
+// ✅ Contar viajes por categoría correctamente
+const getFilterCount = (filterValue) => {
+  if (filterValue === 'all') {
+    return props.trips.length
+  }
+
+  return props.trips.filter(trip => trip.status === filterValue).length
+}
 
 const handleViewTripDetails = (trip) => {
   emit('view-trip-details', trip)

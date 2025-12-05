@@ -1,109 +1,177 @@
 <template>
-  <div class="bg-white rounded-xl p-6 shadow-sm">
-    <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
-      <h3 class="text-lg font-semibold text-gray-900 m-0">Reporte por Conductor</h3>
+  <div class="bg-white rounded-xl shadow-sm p-6">
+    <div class="flex justify-between items-center mb-6">
+      <h3 class="text-xl font-bold text-gray-900">Reporte por Conductor</h3>
 
-      <div class="flex gap-3 flex-wrap">
-        <div class="relative flex items-center">
-          <svg class="absolute left-3 text-gray-500" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"></circle>
-            <path d="m21 21-4.35-4.35"></path>
-          </svg>
+      <div class="flex gap-3">
+        <!-- Buscar -->
+        <div class="relative">
           <input
             v-model="searchQuery"
             type="text"
             placeholder="Buscar conductor..."
-            class="py-2 px-3 pl-9 border border-gray-200 rounded-lg text-sm text-gray-900 bg-gray-100 transition-all duration-300 w-[200px] focus:outline-none focus:border-primary focus:bg-white placeholder:text-gray-400"
-          />
+            class="w-64 py-2 px-4 pl-10 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-primary focus:bg-white transition-all"
+          >
+          <svg
+            class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
         </div>
 
+        <!-- Ordenar -->
         <select
           v-model="sortBy"
-          class="py-2 px-3 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white cursor-pointer transition-all duration-300 focus:outline-none focus:border-primary"
+          class="py-2 px-4 bg-gray-50 border border-gray-200 rounded-lg text-sm cursor-pointer focus:outline-none focus:border-primary transition-all"
         >
           <option value="name">Ordenar por nombre</option>
-          <option value="trips">Ordenar por viajes</option>
           <option value="alerts">Ordenar por alertas</option>
-          <option value="safety">Ordenar por seguridad</option>
+          <option value="safetyRate">Ordenar por seguridad</option>
         </select>
       </div>
     </div>
 
+    <!-- Tabla -->
     <div class="overflow-x-auto">
-      <table class="w-full border-collapse">
+      <table class="w-full">
         <thead>
-        <tr class="border-b-2 border-gray-200">
-          <th class="py-3 px-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Conductor</th>
-          <th class="py-3 px-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Vehículo</th>
-          <th class="py-3 px-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Viajes</th>
-          <th class="py-3 px-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Alertas</th>
-          <th class="py-3 px-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Seguridad</th>
-          <th class="py-3 px-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Horas</th>
-          <th class="py-3 px-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Estado</th>
+        <tr class="border-b border-gray-200">
+          <th class="text-left py-3 px-4 text-sm font-semibold text-gray-600">CONDUCTOR</th>
+          <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">ALERTAS</th>
+          <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">SEGURIDAD</th>
+          <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">ESTADO</th>
         </tr>
         </thead>
-
         <tbody>
-        <tr v-if="filteredDrivers.length === 0">
-          <td colspan="7" class="py-10 text-center">
-            <div class="flex flex-col items-center justify-center text-gray-500">
-              <p>No se encontraron conductores</p>
-            </div>
-          </td>
-        </tr>
-
         <tr
-          v-for="driver in filteredDrivers"
+          v-for="driver in filteredAndSortedDrivers"
           :key="driver.id"
-          class="border-b border-gray-100 transition-all duration-300 cursor-pointer hover:bg-gray-50"
-          @click="handleRowClick(driver)"
+          class="border-b border-gray-100 hover:bg-gray-50 transition-colors"
         >
-          <td class="py-4 px-3 text-sm text-gray-900">
+          <!-- Conductor -->
+          <td class="py-4 px-4">
             <div class="flex items-center gap-3">
-              <img :src="driver.avatar" :alt="driver.name" class="w-9 h-9 rounded-full object-cover" />
-              <span class="font-semibold">{{ driver.name }}</span>
+              <div
+                class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                :style="{ backgroundColor: driver.avatarColor }"
+              >
+                {{ driver.initials }}
+              </div>
+              <div>
+                <p class="font-semibold text-gray-900">{{ driver.name }}</p>
+                <p class="text-xs text-gray-500">ID: {{ driver.id }}</p>
+              </div>
             </div>
           </td>
 
-          <td class="py-4 px-3 text-sm text-gray-900">{{ driver.vehicle }}</td>
-
-          <td class="py-4 px-3">
-            <span class="inline-block py-1 px-3 bg-blue-50 text-info rounded-xl text-xs font-semibold">{{ driver.trips }}</span>
+          <!-- Alertas -->
+          <td class="py-4 px-4 text-center">
+            <div class="flex items-center justify-center gap-2">
+                <span
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold"
+                  :class="{
+                    'bg-red-100 text-red-700': driver.alerts > 5,
+                    'bg-orange-100 text-orange-700': driver.alerts > 0 && driver.alerts <= 5,
+                    'bg-green-100 text-green-700': driver.alerts === 0
+                  }"
+                >
+                  {{ driver.alerts }}
+                </span>
+              <span
+                v-if="driver.severity"
+                class="px-2 py-1 rounded text-xs font-semibold"
+                :class="{
+                    'bg-red-100 text-red-700': driver.severity === 'Critical',
+                    'bg-orange-100 text-orange-700': driver.severity === 'High',
+                    'bg-yellow-100 text-yellow-700': driver.severity === 'Medium',
+                    'bg-blue-100 text-blue-700': driver.severity === 'Low'
+                  }"
+              >
+                  {{ getSeverityLabel(driver.severity) }}
+                </span>
+            </div>
           </td>
 
-          <td class="py-4 px-3">
-              <span :class="['inline-block py-1 px-3 rounded-xl text-xs font-semibold', getAlertBadgeClass(driver.alerts)]">
-                {{ driver.alerts }}
-              </span>
-          </td>
-
-          <td class="py-4 px-3">
-            <div class="flex flex-col gap-1.5">
-                <span :class="['font-semibold text-sm', getSafetyClass(driver.safetyRate)]">
+          <!-- Seguridad -->
+          <td class="py-4 px-4">
+            <div class="flex flex-col items-center gap-1">
+                <span
+                  class="text-sm font-bold"
+                  :class="{
+                    'text-green-600': driver.safetyRate >= 80,
+                    'text-yellow-600': driver.safetyRate >= 50 && driver.safetyRate < 80,
+                    'text-red-600': driver.safetyRate < 50
+                  }"
+                >
                   {{ driver.safetyRate }}%
                 </span>
-              <div class="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div class="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
                 <div
-                  :style="{
-                      width: `${driver.safetyRate}%`,
-                      background: getSafetyColor(driver.safetyRate)
+                  class="h-full transition-all duration-300"
+                  :class="{
+                      'bg-green-500': driver.safetyRate >= 80,
+                      'bg-yellow-500': driver.safetyRate >= 50 && driver.safetyRate < 80,
+                      'bg-red-500': driver.safetyRate < 50
                     }"
-                  class="h-full rounded-full transition-all duration-600"
+                  :style="{ width: driver.safetyRate + '%' }"
                 ></div>
               </div>
             </div>
           </td>
 
-          <td class="py-4 px-3 text-sm text-gray-900">{{ driver.hours }}h</td>
-
-          <td class="py-4 px-3">
-              <span :class="['inline-block py-1.5 px-3 rounded-xl text-xs font-semibold', getStatusClass(driver.status)]">
-                {{ getStatusText(driver.status) }}
+          <!-- Estado -->
+          <td class="py-4 px-4 text-center">
+              <span
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
+                :class="{
+                  'bg-green-100 text-green-700': driver.status === 'active',
+                  'bg-yellow-100 text-yellow-700': driver.status === 'resting',
+                  'bg-gray-100 text-gray-700': driver.status === 'offline'
+                }"
+              >
+                <span
+                  class="w-1.5 h-1.5 rounded-full"
+                  :class="{
+                    'bg-green-500': driver.status === 'active',
+                    'bg-yellow-500': driver.status === 'resting',
+                    'bg-gray-500': driver.status === 'offline'
+                  }"
+                ></span>
+                {{ getStatusLabel(driver.status) }}
               </span>
           </td>
         </tr>
         </tbody>
       </table>
+
+      <!-- Sin resultados -->
+      <div
+        v-if="filteredAndSortedDrivers.length === 0"
+        class="text-center py-12"
+      >
+        <svg
+          class="mx-auto mb-4 text-gray-300"
+          xmlns="http://www.w3.org/2000/svg"
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.35-4.35"></path>
+        </svg>
+        <p class="text-gray-500 text-sm">No se encontraron conductores</p>
+      </div>
     </div>
   </div>
 </template>
@@ -112,150 +180,124 @@
 import { ref, computed } from 'vue'
 
 const props = defineProps({
-  drivers: { type: Array, default: () => [] }
+  drivers: {
+    type: Array,
+    required: true,
+    default: () => []
+  }
 })
-
-const emit = defineEmits(['row-click'])
 
 const searchQuery = ref('')
 const sortBy = ref('name')
 
-// ✅ Función mejorada con COHERENCIA y lógica real
-const transformedDrivers = computed(() => {
-  return props.drivers.map(driver => {
-    const alerts = driver.alerts || 0
+// ✅ Función para obtener iniciales
+const getInitials = (name) => {
+  const parts = name.split(' ')
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase()
+  }
+  return name.substring(0, 2).toUpperCase()
+}
 
-    // ✅ LÓGICA DE SEGURIDAD COHERENTE con alertas
-    let safetyRate = 100
+// ✅ Función para generar color de avatar consistente
+const getAvatarColor = (name) => {
+  const colors = [
+    '#6A5ACD', // Púrpura
+    '#20B2AA', // Turquesa
+    '#CD853F', // Marrón
+    '#4169E1', // Azul
+    '#FF8C00', // Naranja
+    '#9370DB', // Violeta
+    '#3CB371', // Verde
+    '#DC143C', // Rojo
+    '#4682B4'  // Azul acero
+  ]
 
-    if (alerts === 0) {
-      // Conductores sin alertas: 88-95%
-      safetyRate = Math.floor(Math.random() * 8) + 88
-    } else if (alerts <= 2) {
-      // Alertas bajas: 75-87%
-      safetyRate = Math.floor(Math.random() * 13) + 75
-    } else if (alerts <= 5) {
-      // Alertas moderadas: 60-74%
-      safetyRate = Math.floor(Math.random() * 15) + 60
-    } else if (alerts <= 10) {
-      // Alertas altas: 45-59%
-      safetyRate = Math.floor(Math.random() * 15) + 45
-    } else {
-      // Alertas críticas: 30-44%
-      safetyRate = Math.floor(Math.random() * 15) + 30
-    }
+  const hash = name.split('').reduce((acc, char) => {
+    return char.charCodeAt(0) + ((acc << 5) - acc)
+  }, 0)
 
-    // ✅ Si hay datos de fatiga, ajustar seguridad
-    if (driver.monitoring?.fatigueScore) {
-      const fatigue = driver.monitoring.fatigueScore
-      if (fatigue >= 80) {
-        safetyRate = Math.min(safetyRate, 50)
-      } else if (fatigue >= 60) {
-        safetyRate = Math.min(safetyRate, 70)
-      }
-    }
+  return colors[Math.abs(hash) % colors.length]
+}
 
-    // ✅ LÓGICA DE VIAJES COHERENTE
-    let trips = 0
+// ✅ Calcular tasa de seguridad basada en alertas
+const calculateSafetyRate = (alerts) => {
+  if (alerts === 0) return 100
+  if (alerts <= 2) return 92
+  if (alerts <= 5) return 78
+  if (alerts <= 10) return 65
+  return 45
+}
 
-    if (driver.status === 'active') {
-      // Conductores activos: 15-35 viajes
-      trips = Math.floor(Math.random() * 21) + 15
-    } else if (driver.status === 'resting') {
-      // Conductores descansando: 20-40 viajes (trabajaron más, por eso descansan)
-      trips = Math.floor(Math.random() * 21) + 20
-    } else {
-      // Conductores offline: 5-15 viajes
-      trips = Math.floor(Math.random() * 11) + 5
-    }
-
-    // ✅ LÓGICA DE HORAS COHERENTE con viajes
-    // Promedio: 8 horas por viaje con variación
-    const avgHoursPerTrip = 6 + Math.random() * 4 // 6-10 horas por viaje
-    const hours = Math.floor(trips * avgHoursPerTrip)
-
-    return {
-      id: driver.id,
-      name: driver.name,
-      vehicle: driver.vehicle?.plate || driver.vehicle || 'N/A', // ✅ FIX PLACA
-      trips: trips,
-      alerts: alerts,
-      safetyRate: safetyRate,
-      hours: hours,
-      status: driver.status,
-      avatar: driver.avatar
-    }
-  })
+// ✅ Mapear datos de conductores con cálculos reales
+const mappedDrivers = computed(() => {
+  return props.drivers.map(driver => ({
+    id: driver.id,
+    name: driver.name,
+    initials: getInitials(driver.name),
+    avatarColor: getAvatarColor(driver.name),
+    alerts: driver.alerts || 0,
+    severity: driver.severity,
+    safetyRate: calculateSafetyRate(driver.alerts || 0),
+    status: driver.status || 'offline'
+  }))
 })
 
+// ✅ Filtrar por búsqueda
 const filteredDrivers = computed(() => {
-  let result = [...transformedDrivers.value]
+  if (!searchQuery.value) return mappedDrivers.value
 
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    result = result.filter(driver =>
-      driver.name.toLowerCase().includes(query) ||
-      driver.vehicle.toLowerCase().includes(query)
-    )
-  }
-
-  result.sort((a, b) => {
-    switch (sortBy.value) {
-      case 'name':
-        return a.name.localeCompare(b.name)
-      case 'trips':
-        return b.trips - a.trips
-      case 'alerts':
-        return b.alerts - a.alerts
-      case 'safety':
-        return b.safetyRate - a.safetyRate
-      default:
-        return 0
-    }
-  })
-
-  return result
+  const query = searchQuery.value.toLowerCase()
+  return mappedDrivers.value.filter(driver =>
+    driver.name.toLowerCase().includes(query) ||
+    driver.id.toString().includes(query)
+  )
 })
 
-const getAlertBadgeClass = (alerts) => {
-  if (alerts === 0) return 'bg-green-50 text-success'
-  if (alerts <= 2) return 'bg-blue-50 text-info'
-  if (alerts <= 5) return 'bg-yellow-50 text-warning'
-  if (alerts <= 10) return 'bg-orange-50 text-orange-500'
-  return 'bg-red-50 text-primary'
-}
+// ✅ Ordenar
+const filteredAndSortedDrivers = computed(() => {
+  const drivers = [...filteredDrivers.value]
 
-const getSafetyClass = (rate) => {
-  if (rate >= 85) return 'text-success'
-  if (rate >= 70) return 'text-warning'
-  return 'text-primary'
-}
-
-const getSafetyColor = (rate) => {
-  if (rate >= 85) return 'linear-gradient(90deg, #00CA75 0%, #00A060 100%)'
-  if (rate >= 70) return 'linear-gradient(90deg, #FFCD18 0%, #FFA500 100%)'
-  return 'linear-gradient(90deg, #C13515 0%, #8B2810 100%)'
-}
-
-const getStatusClass = (status) => {
-  const classes = {
-    active: 'bg-green-50 text-success',
-    resting: 'bg-yellow-50 text-warning',
-    offline: 'bg-gray-100 text-gray-500'
+  switch (sortBy.value) {
+    case 'name':
+      return drivers.sort((a, b) => a.name.localeCompare(b.name))
+    case 'alerts':
+      return drivers.sort((a, b) => b.alerts - a.alerts)
+    case 'safetyRate':
+      return drivers.sort((a, b) => b.safetyRate - a.safetyRate)
+    default:
+      return drivers
   }
-  return classes[status]
-}
+})
 
-const getStatusText = (status) => {
-  const statusMap = {
-    active: 'Activo',
-    resting: 'Descansando',
-    offline: 'Desconectado'
+// ✅ Labels en español
+const getSeverityLabel = (severity) => {
+  const labels = {
+    'Critical': 'Crítico',
+    'High': 'Alto',
+    'Medium': 'Medio',
+    'Low': 'Bajo'
   }
-  return statusMap[status] || status
+  return labels[severity] || severity
 }
 
-const handleRowClick = (driver) => {
-  emit('row-click', driver)
+const getStatusLabel = (status) => {
+  const labels = {
+    'active': 'Activo',
+    'resting': 'Descansando',
+    'offline': 'Desconectado'
+  }
+  return labels[status] || status
 }
 </script>
+
+<style scoped>
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+tbody tr:last-child {
+  border-bottom: none;
+}
+</style>

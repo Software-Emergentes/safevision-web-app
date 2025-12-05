@@ -172,27 +172,55 @@ const handleLogin = async () => {
 
   isLoading.value = true
 
-  await new Promise(resolve => setTimeout(resolve, 1000))
-
   try {
-    const mockUser = {
-      id: 1,
-      name: 'Usuario Administrador',
+    console.log('🔐 Intentando login con el backend...')
+
+    // ✅ LLAMADA REAL AL API - envía 'email' al backend
+    const response = await fetch('https://localhost:44385/api/v1/authentication/sign-in', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email: loginData.value.email,
+        password: loginData.value.password
+      })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.message || 'Credenciales incorrectas')
+    }
+
+    const data = await response.json()
+    console.log('✅ Respuesta del backend:', data)
+
+    // El backend devuelve: { id, username, token, requiresMfa }
+    const user = {
+      id: data.id,
+      name: data.username,
       email: loginData.value.email,
       role: 'Manager'
     }
 
-    const mockToken = 'mock-jwt-token-' + Date.now()
+    const token = data.token
 
-    authStore.login(mockUser, mockToken)
+    if (!token) {
+      throw new Error('No se recibió el token de autenticación')
+    }
 
-    console.log('✅ Login exitoso (MOCK):', mockUser)
+    // Guardar en el store
+    authStore.login(user, token)
 
+    console.log('✅ Token guardado en localStorage')
+    console.log('✅ Usuario guardado en store')
+
+    // Redirigir al dashboard
     router.push({ name: 'dashboard' })
 
   } catch (error) {
-    errorMessage.value = 'Error al iniciar sesión. Por favor intenta de nuevo.'
-    console.error('Error en login:', error)
+    errorMessage.value = error.message || 'Error al iniciar sesión. Por favor intenta de nuevo.'
+    console.error('❌ Error en login:', error)
   } finally {
     isLoading.value = false
   }

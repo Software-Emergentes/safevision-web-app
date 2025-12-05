@@ -1,57 +1,77 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import LoginView from '@/views/LoginView.vue'
+import DashboardView from '@/views/DashboardView.vue'
+import ReportsView from '@/views/ReportsView.vue'
+import DriverDetailView from '@/views/DriverDetailView.vue'
+
+const routes = [
+  {
+    path: '/',
+    redirect: '/login' // ✅ CAMBIO: Redirigir a login por defecto
+  },
+  {
+    path: '/login',
+    name: 'login',
+    component: LoginView,
+    meta: { requiresAuth: false } // ✅ No requiere autenticación
+  },
+  {
+    path: '/dashboard',
+    name: 'dashboard',
+    component: DashboardView,
+    meta: { requiresAuth: true } // ✅ NUEVO: Requiere autenticación
+  },
+  {
+    path: '/reports',
+    name: 'reports',
+    component: ReportsView,
+    meta: { requiresAuth: true } // ✅ NUEVO: Requiere autenticación
+  },
+  {
+    path: '/driver/:id',
+    name: 'driver-detail',
+    component: DriverDetailView,
+    meta: { requiresAuth: true } // ✅ NUEVO: Requiere autenticación
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/login' // ✅ Rutas no encontradas van a login
+  }
+]
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [
-    {
-      path: '/',
-      name: 'login',
-      component: () => import('../views/LoginView.vue'),
-      meta: { requiresGuest: true }
-    },
-    {
-      path: '/dashboard',
-      name: 'dashboard',
-      component: () => import('../views/DashboardView.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/driver/:id',
-      name: 'driver-detail',
-      component: () => import('../views/DriverDetailView.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/reports',
-      name: 'reports',
-      component: () => import('../views/ReportsView.vue'),
-      meta: { requiresAuth: true }
-    },
-    // Ruta 404
-    {
-      path: '/:pathMatch(.*)*',
-      name: 'not-found',
-      component: () => import('../views/NotFoundView.vue')
-    }
-  ]
+  routes
 })
 
-// Guard de navegación
-router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore()
-  const isAuthenticated = authStore.isAuthenticated
+// ========================================
+// 🔒 GUARD DE AUTENTICACIÓN (NUEVO)
+// ========================================
 
-  // Si requiere autenticación y no está autenticado
-  if (to.meta.requiresAuth && !isAuthenticated) {
-    next({ name: 'login' })
-  }
-  // Si requiere ser invitado y está autenticado
-  else if (to.meta.requiresGuest && isAuthenticated) {
-    next({ name: 'dashboard' })
-  }
-  // Todo ok
-  else {
+router.beforeEach((to, from, next) => {
+  // Verificar si la ruta requiere autenticación
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+
+  // Verificar si el usuario está autenticado
+  const isAuthenticated = !!localStorage.getItem('authToken')
+
+  console.log('🔐 Navigation Guard:', {
+    to: to.path,
+    requiresAuth,
+    isAuthenticated
+  })
+
+  if (requiresAuth && !isAuthenticated) {
+    // ❌ Ruta protegida pero NO autenticado → Redirigir a login
+    console.log('❌ No autenticado. Redirigiendo a /login')
+    next('/login')
+  } else if (to.path === '/login' && isAuthenticated) {
+    // ✅ Ya autenticado intentando ir a login → Redirigir a dashboard
+    console.log('✅ Ya autenticado. Redirigiendo a /dashboard')
+    next('/dashboard')
+  } else {
+    // ✅ Todo OK → Permitir navegación
+    console.log('✅ Navegación permitida')
     next()
   }
 })
