@@ -49,10 +49,7 @@ const router = createRouter({
 // ========================================
 
 router.beforeEach((to, from, next) => {
-  // Verificar si la ruta requiere autenticación
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
-
-  // Verificar si el usuario está autenticado
   const isAuthenticated = !!localStorage.getItem('authToken')
 
   console.log('🔐 Navigation Guard:', {
@@ -61,16 +58,27 @@ router.beforeEach((to, from, next) => {
     isAuthenticated
   })
 
+  // Si intenta ir a raíz "/" y está autenticado, mandarlo a dashboard
+  if (to.path === '/' && isAuthenticated) {
+    console.log('✅ Usuario autenticado en raíz, redirigiendo a dashboard')
+    next('/dashboard')
+    return
+  }
+
+  // Si intenta ir a raíz "/" y NO está autenticado, mandarlo a login
+  if (to.path === '/' && !isAuthenticated) {
+    console.log('❌ Usuario no autenticado en raíz, redirigiendo a login')
+    next('/login')
+    return
+  }
+
   if (requiresAuth && !isAuthenticated) {
-    // ❌ Ruta protegida pero NO autenticado → Redirigir a login
     console.log('❌ No autenticado. Redirigiendo a /login')
     next('/login')
   } else if (to.path === '/login' && isAuthenticated) {
-    // ✅ Ya autenticado intentando ir a login → Redirigir a dashboard
     console.log('✅ Ya autenticado. Redirigiendo a /dashboard')
     next('/dashboard')
   } else {
-    // ✅ Todo OK → Permitir navegación
     console.log('✅ Navegación permitida')
     next()
   }
